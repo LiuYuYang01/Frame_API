@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
+import { QiniuModule } from './qiniu/web/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './model/user';
 
@@ -19,6 +20,7 @@ import { User } from './model/user';
       logging: true, // 显示SQL日志
     }),
     UsersModule,
+    QiniuModule,
   ],
   controllers: [AppController],
   providers: [AppService],

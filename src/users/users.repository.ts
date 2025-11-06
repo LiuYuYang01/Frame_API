@@ -11,6 +11,6 @@ export class UsersRepository {
   ) {}
 
   async list(): Promise<User[]> {
-    return this.userRepository.find();
+    return await this.userRepository.find();
   }
 }

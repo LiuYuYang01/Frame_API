@@ -1,20 +1,79 @@
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 启用全局验证管道
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // 自动过滤掉 DTO 中未定义的属性
+      forbidNonWhitelisted: true, // 如果有未定义的属性，抛出错误
+      transform: true, // 自动转换类型
+      transformOptions: {
+        enableImplicitConversion: true, // 启用隐式类型转换
+      },
+    }),
+  );
+
+  // 启用 CORS（如果需要前端跨域访问）
+  app.enableCors({
+    origin: true, // 允许所有来源（生产环境应该设置具体的域名）
+    credentials: true,
+  });
+
+  // Swagger 配置
   const config = new DocumentBuilder()
-    .setTitle('Cats example')
-    .setDescription('The cats API description')
-    .setVersion('1.0')
-    .addTag('cats')
+    .setTitle('NestJS API 文档')
+    .setDescription(
+      'NestJS 应用程序接口文档，包含用户管理、七牛云文件管理等模块',
+    )
+    .setVersion('1.0.0')
+    .addTag('用户管理', '用户相关接口')
+    .addTag('七牛云文件管理', '文件上传、下载、删除等操作')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: '输入 JWT 令牌',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addServer('http://localhost:3000', '开发环境')
+    .addServer('https://api.example.com', '生产环境')
+    .setContact(
+      '技术支持',
+      'https://github.com/your-repo',
+      'support@example.com',
+    )
+    .setLicense('MIT', 'https://opensource.org/licenses/MIT')
     .build();
+
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
+  SwaggerModule.setup('api', app, documentFactory, {
+    swaggerOptions: {
+      persistAuthorization: true, // 持久化授权
+      docExpansion: 'none', // 默认折叠所有接口
+      filter: true, // 启用搜索过滤
+      showRequestDuration: true, // 显示请求时长
+    },
+    customSiteTitle: 'NestJS API 文档',
+    customfavIcon: 'https://nestjs.com/img/logo-small.svg',
+    customCss: '.swagger-ui .topbar { display: none }', // 隐藏顶部栏
+  });
 
   await app.listen(process.env.PORT ?? 3000);
+  console.log(
+    `🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 3000}`,
+  );
+  console.log(
+    `📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/api`,
+  );
 }
 
 bootstrap();
