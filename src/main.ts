@@ -76,4 +76,7 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('应用启动失败:', err);
+  process.exit(1);
+});

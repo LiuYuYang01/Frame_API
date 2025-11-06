@@ -21,7 +21,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { QiniuService } from './service';
-import { FileListDto, MoveFileDto, CopyFileDto } from '../dto/upload_file';
+import { FileListDto, MoveFileDto, CopyFileDto } from './dto/upload_file';
 import * as fs from 'fs';
 import * as path from 'path';
 

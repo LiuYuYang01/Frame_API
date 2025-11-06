@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as qiniu from 'qiniu';
-import { qiniuConfig } from '../config';
+import { qiniuConfig } from './config';
 import * as path from 'path';
 
 @Injectable()

@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
-import { QiniuModule } from './qiniu/web/module';
+import { UsersModule } from './web/users/users.module';
+import { QiniuModule } from './web/qiniu/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './model/user';
+import { User } from './entity/user';
 
 @Module({
   imports: [
@@ -23,6 +22,6 @@ import { User } from './model/user';
     QiniuModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [],
 })
 export class AppModule {}
