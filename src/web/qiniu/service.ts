@@ -322,4 +322,43 @@ export class QiniuService {
       );
     });
   }
+
+  /**
+   * 获取图片信息（宽高等）
+   * @param url 图片URL
+   * @returns Promise
+   */
+  async getImageInfo(url: string): Promise<{
+    width: number;
+    height: number;
+    format: string;
+    size: number;
+    colorModel: string;
+  } | null> {
+    try {
+      // 使用七牛云的图片信息接口
+      const imageInfoUrl = `${url}?imageInfo`;
+
+      // 使用 fetch 或其他 HTTP 客户端获取图片信息
+      const response = await fetch(imageInfoUrl);
+
+      if (!response.ok) {
+        this.logger.error(`获取图片信息失败: ${response.statusText}`);
+        return null;
+      }
+
+      const info = await response.json();
+
+      return {
+        width: info.width,
+        height: info.height,
+        format: info.format,
+        size: info.size,
+        colorModel: info.colorModel,
+      };
+    } catch (error) {
+      this.logger.error(`获取图片信息失败: ${error.message}`);
+      return null;
+    }
+  }
 }

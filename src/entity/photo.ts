@@ -1,0 +1,42 @@
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
+import { Album } from './album';
+
+@Entity('photo')
+export class Photo {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ comment: '图片名称' })
+  name: string;
+
+  @Column({ comment: '七牛云文件key' })
+  key: string;
+
+  @Column({ comment: '图片URL地址' })
+  url: string;
+
+  @Column({ comment: '文件大小（字节）' })
+  size: number;
+
+  @Column({ nullable: true, comment: '图片宽度（像素）' })
+  width: number;
+
+  @Column({ nullable: true, comment: '图片高度（像素）' })
+  height: number;
+
+  @Column({ comment: '图片格式/MIME类型' })
+  mime_type: string;
+
+  @Column({ comment: '文件hash值' })
+  hash: string;
+
+  @Column({
+    type: 'datetime',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  create_time: Date;
+
+  // 多对多关系：一张照片可以属于多个相册
+  @ManyToMany(() => Album, (album) => album.photos)
+  albums: Album[];
+}

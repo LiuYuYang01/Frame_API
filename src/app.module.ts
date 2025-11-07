@@ -3,8 +3,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { UserModule } from './web/user/module';
 import { QiniuModule } from './web/qiniu/module';
+import { PhotoModule } from './web/photo/module';
+import { AlbumModule } from './web/album/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entity/user';
+import { Photo } from './entity/photo';
+import { Album } from './entity/album';
 import { JwtAuthGuard } from './guard/jwt_auth';
 
 @Module({
@@ -16,12 +20,14 @@ import { JwtAuthGuard } from './guard/jwt_auth';
       username: 'root',
       password: 'liuyuyang',
       database: 'thrivex_picture',
-      entities: [User],
+      entities: [User, Photo, Album],
       synchronize: true, // ✅ 开发环境开启
       logging: true, // 显示SQL日志
     }),
     UserModule,
     QiniuModule,
+    PhotoModule,
+    AlbumModule,
   ],
   controllers: [AppController],
   providers: [

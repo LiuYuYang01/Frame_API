@@ -22,9 +22,11 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { QiniuService } from './service';
+import { PhotoService } from '../photo/service';
 import { FileListDto } from './dto/upload_file';
 import { Result } from '../../utils/response';
 import { Paging } from '../../utils/paging';
+import { formatObjectDates } from '../../utils/date';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -34,7 +36,10 @@ import * as path from 'path';
 export class QiniuController {
   private readonly logger = new Logger(QiniuController.name);
 
-  constructor(private readonly qiniuService: QiniuService) {}
+  constructor(
+    private readonly qiniuService: QiniuService,
+    private readonly photoService: PhotoService,
+  ) {}
 
   /**
    * 上传文件（支持单个或多个）
@@ -42,7 +47,8 @@ export class QiniuController {
   @Post('upload')
   @ApiOperation({
     summary: '文件上传',
-    description: '支持批量上传，最终以数组形式返回每个文件的地址',
+    description:
+      '支持批量上传，上传成功后自动保存图片信息到数据库，返回照片记录',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -77,7 +83,18 @@ export class QiniuController {
         fs.mkdirSync(tempDir, { recursive: true });
       }
 
-      const urls: string[] = [];
+      const photos: Array<{
+        id: number;
+        name: string;
+        key: string;
+        url: string;
+        size: number;
+        width: number;
+        height: number;
+        mime_type: string;
+        hash: string;
+        create_time: Date;
+      }> = [];
 
       for (const file of files) {
         const tempFilePath = path.join(tempDir, file.originalname);
@@ -92,14 +109,54 @@ export class QiniuController {
         const uniqueId = `${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(2, 11)}`;
         const key = `${year}_${month}_${day}_${uniqueId}${ext}`;
 
-        const result = await this.qiniuService.uploadFile(tempFilePath, key);
+        // 上传到七牛云
+        const uploadResult = await this.qiniuService.uploadFile(
+          tempFilePath,
+          key,
+        );
         fs.unlinkSync(tempFilePath);
 
-        const url = this.qiniuService.getPublicDownloadUrl(result.key);
-        urls.push(url);
+        // 获取文件信息
+        const fileInfo = await this.qiniuService.getFileInfo(uploadResult.key);
+        const url = this.qiniuService.getPublicDownloadUrl(uploadResult.key);
+
+        // 获取图片尺寸信息（仅对图片文件）
+        let imageInfo: {
+          width: number;
+          height: number;
+          format: string;
+          size: number;
+          colorModel: string;
+        } | null = null;
+
+        if (file.mimetype.startsWith('image/')) {
+          imageInfo = await this.qiniuService.getImageInfo(url);
+        }
+
+        // 创建照片记录
+        const photo = await this.photoService.create({
+          name: file.originalname,
+          key: uploadResult.key,
+          url: url,
+          size: fileInfo.fsize,
+          width: imageInfo?.width || 0,
+          height: imageInfo?.height || 0,
+          mime_type: fileInfo.mimeType,
+          hash: uploadResult.hash,
+        });
+
+        photos.push(photo);
       }
 
-      return Result.success(`成功上传 ${urls.length} 个文件`, urls);
+      // 格式化时间
+      const formattedPhotos = photos.map((photo) =>
+        formatObjectDates(photo, ['create_time']),
+      );
+
+      return Result.success(
+        `成功上传 ${photos.length} 个文件`,
+        formattedPhotos,
+      );
     } catch (error) {
       this.logger.error(`文件上传失败: ${error.message}`);
       throw new BadRequestException(`文件上传失败: ${error.message}`);
