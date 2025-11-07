@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { UserModule } from './web/user/module';
-import { QiniuModule } from './web/qiniu/module';
+import { FileModule } from './web/upload/module';
 import { PhotoModule } from './web/photo/module';
 import { AlbumModule } from './web/album/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -25,7 +25,7 @@ import { JwtAuthGuard } from './guard/jwt_auth';
       logging: true, // 显示SQL日志
     }),
     UserModule,
-    QiniuModule,
+    FileModule,
     PhotoModule,
     AlbumModule,
   ],

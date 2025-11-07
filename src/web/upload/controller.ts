@@ -27,8 +27,8 @@ import * as crypto from 'crypto';
 @ApiTags('文件管理')
 @ApiBearerAuth('JWT-auth')
 @Controller('qiniu')
-export class QiniuController {
-  private readonly logger = new Logger(QiniuController.name);
+export class FileController {
+  private readonly logger = new Logger(FileController.name);
 
   constructor(
     private readonly qiniuService: QiniuService,
