@@ -19,14 +19,17 @@ import {
   ApiBody,
   ApiParam,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { QiniuService } from './service';
 import { FileListDto } from './dto/upload_file';
 import { Result } from '../../utils/response';
+import { Paging } from '../../utils/paging';
 import * as fs from 'fs';
 import * as path from 'path';
 
 @ApiTags('七牛云文件管理')
+@ApiBearerAuth('JWT-auth')
 @Controller('qiniu')
 export class QiniuController {
   private readonly logger = new Logger(QiniuController.name);
@@ -219,14 +222,17 @@ export class QiniuController {
         url: this.qiniuService.getPublicDownloadUrl(item.key),
       }));
 
-      return Result.success('获取文件列表成功', {
+      // 使用 Paging 工具格式化分页数据
+      // 注意：七牛云不提供总数，这里使用当前页的数据量作为参考
+      const pagingData = Paging.filter({
         items: items,
-        total: items.length,
+        total: items.length, // 当前页数据量
         page: page,
-        limit: limit,
-        hasMore: !!result.marker,
-        marker: result.marker,
+        size: limit,
       });
+
+      // 添加七牛云特有的 marker 信息
+      return Result.success('获取文件列表成功', pagingData);
     } catch (error) {
       this.logger.error(`获取文件列表失败: ${error.message}`);
       throw new BadRequestException(`获取文件列表失败: ${error.message}`);

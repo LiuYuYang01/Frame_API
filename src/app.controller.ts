@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
-import { Public } from './web/user/public.decorator';
+import { Public } from './decorator/public';
 
 @Controller()
 export class AppController {
