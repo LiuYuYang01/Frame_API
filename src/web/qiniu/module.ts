@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { QiniuController } from './controller';
-import { QiniuService } from '../service';
+import { QiniuService } from './service';
 
 @Module({
   controllers: [QiniuController],

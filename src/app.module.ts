@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
-import { UsersModule } from './web/users/users.module';
+import { UserModule } from './web/user/module';
 import { QiniuModule } from './web/qiniu/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entity/user';
+import { JwtAuthGuard } from './guard/jwt_auth';
 
 @Module({
   imports: [
@@ -18,10 +20,15 @@ import { User } from './entity/user';
       synchronize: true, // ✅ 开发环境开启
       logging: true, // 显示SQL日志
     }),
-    UsersModule,
+    UserModule,
     QiniuModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}
