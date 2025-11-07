@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, In } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Photo } from '../../entity/photo';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
-import { QueryPhotoDto } from './dto/query_photo';
-import { QiniuService } from '../qiniu/service';
+import { QiniuService } from '../upload/service';
 
 @Injectable()
 export class PhotoService {
@@ -25,38 +24,6 @@ export class PhotoService {
     const result = await this.photoRepository.save(photo);
     this.logger.log(`创建照片成功: ${result.id} - ${result.name}`);
     return result;
-  }
-
-  /**
-   * 查询照片列表（分页）
-   */
-  async findAll(query: QueryPhotoDto): Promise<{
-    items: Photo[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const { page = 1, limit = 10, keyword } = query;
-
-    const whereCondition = keyword ? { name: Like(`%${keyword}%`) } : {};
-
-    const [items, total] = await this.photoRepository.findAndCount({
-      where: whereCondition,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: {
-        create_time: 'DESC',
-      },
-    });
-
-    this.logger.log(`查询照片列表成功，共 ${total} 条，当前第 ${page} 页`);
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-    };
   }
 
   /**

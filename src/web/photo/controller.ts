@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  Query,
   ParseIntPipe,
 } from '@nestjs/common';
 import {
@@ -18,9 +17,7 @@ import {
 import { PhotoService } from './service';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
-import { QueryPhotoDto } from './dto/query_photo';
 import { Result } from '../../utils/response';
-import { Paging } from '../../utils/paging';
 
 @ApiTags('照片管理')
 @ApiBearerAuth('JWT-auth')
@@ -33,24 +30,6 @@ export class PhotoController {
   async create(@Body() createPhotoDto: CreatePhotoDto) {
     const photo = await this.photoService.create(createPhotoDto);
     return Result.success('照片创建成功', photo);
-  }
-
-  @Get()
-  @ApiOperation({
-    summary: '查询照片列表',
-    description: '分页查询照片列表，支持按名称搜索',
-  })
-  async findAll(@Query() query: QueryPhotoDto) {
-    const result = await this.photoService.findAll(query);
-
-    const pagingData = Paging.filter({
-      items: result.items,
-      total: result.total,
-      page: result.page,
-      size: result.limit,
-    });
-
-    return Result.success('查询照片列表成功', pagingData);
   }
 
   @Get(':id')

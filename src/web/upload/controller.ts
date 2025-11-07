@@ -24,7 +24,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
-@ApiTags('七牛云文件管理')
+@ApiTags('文件管理')
 @ApiBearerAuth('JWT-auth')
 @Controller('qiniu')
 export class QiniuController {
@@ -151,7 +151,7 @@ export class QiniuController {
         const ext = path.extname(file.originalname);
         const key = `${fileHash}${ext}`;
 
-        // 上传到七牛云
+        // 文件上传
         const uploadResult = await this.qiniuService.uploadFile(
           tempFilePath,
           key,
