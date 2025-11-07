@@ -15,7 +15,7 @@ import { JwtAuthGuard } from './guard/jwt_auth';
       port: 3306,
       username: 'root',
       password: 'liuyuyang',
-      database: 'test_app',
+      database: 'thrivex_picture',
       entities: [User],
       synchronize: true, // ✅ 开发环境开启
       logging: true, // 显示SQL日志

@@ -23,6 +23,7 @@ export class UserService {
 
     // 查找用户（使用 email 字段）
     const user = await this.userRepository.findOne({ where: { username } });
+
     if (!user) {
       throw new UnauthorizedException('账号不存在');
     }
