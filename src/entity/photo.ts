@@ -9,9 +9,6 @@ export class Photo {
   @Column({ comment: '图片名称' })
   name: string;
 
-  @Column({ comment: '七牛云文件key' })
-  key: string;
-
   @Column({ comment: '图片URL地址' })
   url: string;
 
@@ -25,10 +22,7 @@ export class Photo {
   height: number;
 
   @Column({ comment: '图片格式/MIME类型' })
-  mime_type: string;
-
-  @Column({ comment: '文件hash值' })
-  hash: string;
+  type: string;
 
   @Column({
     type: 'datetime',

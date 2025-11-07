@@ -7,13 +7,6 @@ export class CreatePhotoDto {
   name: string;
 
   @ApiProperty({
-    description: '七牛云文件key',
-    example: '2024_01_15_123456_abc123.jpg',
-  })
-  @IsString()
-  key: string;
-
-  @ApiProperty({
     description: '图片URL地址',
     example: 'https://cdn.example.com/2024_01_15_123456_abc123.jpg',
   })
@@ -50,13 +43,5 @@ export class CreatePhotoDto {
     example: 'image/jpeg',
   })
   @IsString()
-  mime_type: string;
-
-  @ApiProperty({
-    description: '文件hash值',
-    example: 'FhGxwENMYuGu8sLF8cFFGSGhN4Fi',
-  })
-  @IsString()
-  hash: string;
+  type: string;
 }
-

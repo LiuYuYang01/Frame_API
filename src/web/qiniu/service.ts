@@ -338,16 +338,25 @@ export class QiniuService {
     try {
       // 使用七牛云的图片信息接口
       const imageInfoUrl = `${url}?imageInfo`;
+      this.logger.log(`正在获取图片信息: ${imageInfoUrl}`);
 
       // 使用 fetch 或其他 HTTP 客户端获取图片信息
       const response = await fetch(imageInfoUrl);
 
+      this.logger.log(`图片信息接口响应状态: ${response.status}`);
+
       if (!response.ok) {
-        this.logger.error(`获取图片信息失败: ${response.statusText}`);
+        const errorText = await response.text();
+        this.logger.error(
+          `获取图片信息失败: ${response.status} ${response.statusText}, 响应内容: ${errorText}`,
+        );
         return null;
       }
 
-      const info = await response.json();
+      const responseText = await response.text();
+      this.logger.log(`图片信息接口响应内容: ${responseText}`);
+
+      const info = JSON.parse(responseText);
 
       return {
         width: info.width,
@@ -357,7 +366,9 @@ export class QiniuService {
         colorModel: info.colorModel,
       };
     } catch (error) {
-      this.logger.error(`获取图片信息失败: ${error.message}`);
+      this.logger.error(
+        `获取图片信息失败: ${error.message}, 错误栈: ${error.stack}`,
+      );
       return null;
     }
   }

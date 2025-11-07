@@ -12,7 +12,6 @@ export const qiniuConfig: QiniuConfig = {
   secretKey:
     process.env.QINIU_SECRET_KEY || '-1yPaVCWQP1P5SjwmITo5yMWe2LEp_6ohpxsRp8z',
   bucket: process.env.QINIU_BUCKET || 'liuyuyang',
-  domain:
-    process.env.QINIU_DOMAIN || 'http(s)://liuyuyang.s3.cn-south-1.qiniucs.com',
+  domain: process.env.QINIU_DOMAIN || 'http://store.liuyuyang.net',
   zone: process.env.QINIU_ZONE || 'Zone_z2',
 };

@@ -26,9 +26,10 @@ import { PhotoService } from '../photo/service';
 import { FileListDto } from './dto/upload_file';
 import { Result } from '../../utils/response';
 import { Paging } from '../../utils/paging';
-import { formatObjectDates } from '../../utils/date';
+import { Photo } from '../../entity/photo';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 @ApiTags('七牛云文件管理')
 @ApiBearerAuth('JWT-auth')
@@ -52,7 +53,7 @@ export class QiniuController {
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    description: '上传的文件（支持多选）',
+    description: '支持多选，仅限图片格式',
     required: true,
     schema: {
       type: 'object',
@@ -60,7 +61,6 @@ export class QiniuController {
       properties: {
         files: {
           type: 'array',
-          description: '要上传的文件列表（可选择多个文件）',
           items: {
             type: 'string',
             format: 'binary',
@@ -77,37 +77,60 @@ export class QiniuController {
       throw new BadRequestException('请至少上传一个文件');
     }
 
+    // 允许的图片格式
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+    ];
+
+    const allowedExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.webp',
+      '.bmp',
+    ];
+
+    // 验证所有文件都是图片格式
+    for (const file of files) {
+      const ext = path.extname(file.originalname).toLowerCase();
+
+      if (
+        !allowedMimeTypes.includes(file.mimetype) ||
+        !allowedExtensions.includes(ext)
+      ) {
+        throw new BadRequestException(
+          '仅支持的图片格式：jpg、jpeg、png、gif、webp、bmp',
+        );
+      }
+    }
+
     try {
       const tempDir = path.join(process.cwd(), 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
 
-      const photos: Array<{
-        id: number;
-        name: string;
-        key: string;
-        url: string;
-        size: number;
-        width: number;
-        height: number;
-        mime_type: string;
-        hash: string;
-        create_time: Date;
-      }> = [];
+      const photos: Photo[] = [];
 
       for (const file of files) {
+        // 计算文件哈希值（使用 MD5）
+        const fileHash = crypto
+          .createHash('md5')
+          .update(file.buffer)
+          .digest('hex');
+
         const tempFilePath = path.join(tempDir, file.originalname);
         fs.writeFileSync(tempFilePath, file.buffer);
 
-        // 生成文件key - 格式: YYYY_MM_DD_唯一值
+        // 使用哈希值作为文件名
         const ext = path.extname(file.originalname);
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const uniqueId = `${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(2, 11)}`;
-        const key = `${year}_${month}_${day}_${uniqueId}${ext}`;
+        const key = `${fileHash}${ext}`;
 
         // 上传到七牛云
         const uploadResult = await this.qiniuService.uploadFile(
@@ -119,8 +142,9 @@ export class QiniuController {
         // 获取文件信息
         const fileInfo = await this.qiniuService.getFileInfo(uploadResult.key);
         const url = this.qiniuService.getPublicDownloadUrl(uploadResult.key);
+        this.logger.log(`生成的图片URL: ${url}`);
 
-        // 获取图片尺寸信息（仅对图片文件）
+        // 获取图片尺寸信息
         let imageInfo: {
           width: number;
           height: number;
@@ -129,34 +153,23 @@ export class QiniuController {
           colorModel: string;
         } | null = null;
 
-        if (file.mimetype.startsWith('image/')) {
-          imageInfo = await this.qiniuService.getImageInfo(url);
-        }
+        imageInfo = await this.qiniuService.getImageInfo(url);
+        this.logger.log(`获取到的图片信息: ${JSON.stringify(imageInfo)}`);
 
         // 创建照片记录
         const photo = await this.photoService.create({
-          name: file.originalname,
-          key: uploadResult.key,
+          name: fileHash,
           url: url,
           size: fileInfo.fsize,
           width: imageInfo?.width || 0,
           height: imageInfo?.height || 0,
-          mime_type: fileInfo.mimeType,
-          hash: uploadResult.hash,
+          type: fileInfo.mimeType,
         });
 
         photos.push(photo);
       }
 
-      // 格式化时间
-      const formattedPhotos = photos.map((photo) =>
-        formatObjectDates(photo, ['create_time']),
-      );
-
-      return Result.success(
-        `成功上传 ${photos.length} 个文件`,
-        formattedPhotos,
-      );
+      return Result.success(`成功上传 ${photos.length} 个文件`, photos);
     } catch (error) {
       this.logger.error(`文件上传失败: ${error.message}`);
       throw new BadRequestException(`文件上传失败: ${error.message}`);

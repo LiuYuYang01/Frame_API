@@ -23,7 +23,6 @@ import { QueryAlbumPhotosDto } from './dto/query_album_photos';
 import { ManagePhotosDto } from './dto/manage_photos';
 import { Result } from '../../utils/response';
 import { Paging } from '../../utils/paging';
-import { formatObjectDates } from '../../utils/date';
 
 @ApiTags('相册管理')
 @ApiBearerAuth('JWT-auth')
@@ -35,8 +34,7 @@ export class AlbumController {
   @ApiOperation({ summary: '创建相册', description: '创建新的相册' })
   async create(@Body() createAlbumDto: CreateAlbumDto) {
     const album = await this.albumService.create(createAlbumDto);
-    const formattedAlbum = formatObjectDates(album);
-    return Result.success('相册创建成功', formattedAlbum);
+    return Result.success('相册创建成功', album);
   }
 
   @Get()
@@ -47,13 +45,8 @@ export class AlbumController {
   async findAll(@Query() query: QueryAlbumDto) {
     const result = await this.albumService.findAll(query);
 
-    // 格式化时间
-    const formattedItems = result.items.map((album) =>
-      formatObjectDates(album),
-    );
-
     const pagingData = Paging.filter({
-      items: formattedItems,
+      items: result.items,
       total: result.total,
       page: result.page,
       size: result.limit,
@@ -75,8 +68,7 @@ export class AlbumController {
   })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const album = await this.albumService.findOneWithCount(id);
-    const formattedAlbum = formatObjectDates(album);
-    return Result.success('查询相册详情成功', formattedAlbum);
+    return Result.success('查询相册详情成功', album);
   }
 
   @Patch(':id')
@@ -95,8 +87,7 @@ export class AlbumController {
     @Body() updateAlbumDto: UpdateAlbumDto,
   ) {
     const album = await this.albumService.update(id, updateAlbumDto);
-    const formattedAlbum = formatObjectDates(album);
-    return Result.success('相册更新成功', formattedAlbum);
+    return Result.success('相册更新成功', album);
   }
 
   @Delete(':id')
@@ -174,13 +165,8 @@ export class AlbumController {
       query.limit,
     );
 
-    // 格式化时间
-    const formattedItems = result.items.map((photo) =>
-      formatObjectDates(photo, ['create_time']),
-    );
-
     const pagingData = Paging.filter({
-      items: formattedItems,
+      items: result.items,
       total: result.total,
       page: result.page,
       size: result.limit,

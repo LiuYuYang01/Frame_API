@@ -21,7 +21,6 @@ import { UpdatePhotoDto } from './dto/update_photo';
 import { QueryPhotoDto } from './dto/query_photo';
 import { Result } from '../../utils/response';
 import { Paging } from '../../utils/paging';
-import { formatObjectDates } from '../../utils/date';
 
 @ApiTags('照片管理')
 @ApiBearerAuth('JWT-auth')
@@ -33,8 +32,7 @@ export class PhotoController {
   @ApiOperation({ summary: '创建照片', description: '添加新的照片记录' })
   async create(@Body() createPhotoDto: CreatePhotoDto) {
     const photo = await this.photoService.create(createPhotoDto);
-    const formattedPhoto = formatObjectDates(photo, ['create_time']);
-    return Result.success('照片创建成功', formattedPhoto);
+    return Result.success('照片创建成功', photo);
   }
 
   @Get()
@@ -45,13 +43,8 @@ export class PhotoController {
   async findAll(@Query() query: QueryPhotoDto) {
     const result = await this.photoService.findAll(query);
 
-    // 格式化时间
-    const formattedItems = result.items.map((photo) =>
-      formatObjectDates(photo, ['create_time']),
-    );
-
     const pagingData = Paging.filter({
-      items: formattedItems,
+      items: result.items,
       total: result.total,
       page: result.page,
       size: result.limit,
@@ -73,8 +66,7 @@ export class PhotoController {
   })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const photo = await this.photoService.findOne(id);
-    const formattedPhoto = formatObjectDates(photo, ['create_time']);
-    return Result.success('查询照片详情成功', formattedPhoto);
+    return Result.success('查询照片详情成功', photo);
   }
 
   @Patch(':id')
@@ -90,8 +82,7 @@ export class PhotoController {
     @Body() updatePhotoDto: UpdatePhotoDto,
   ) {
     const photo = await this.photoService.update(id, updatePhotoDto);
-    const formattedPhoto = formatObjectDates(photo, ['create_time']);
-    return Result.success('照片更新成功', formattedPhoto);
+    return Result.success('照片更新成功', photo);
   }
 
   @Delete(':id')
