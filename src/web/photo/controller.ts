@@ -88,7 +88,7 @@ export class PhotoController {
   @Delete(':id')
   @ApiOperation({
     summary: '删除照片',
-    description: '删除照片记录（不会删除七牛云上的文件）',
+    description: '删除照片记录，同时会删除七牛云上对应的文件',
   })
   @ApiParam({
     name: 'id',

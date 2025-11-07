@@ -1,11 +1,7 @@
 import {
   Controller,
   Post,
-  Delete,
-  Get,
   Body,
-  Query,
-  Param,
   UseInterceptors,
   UploadedFiles,
   BadRequestException,
@@ -17,15 +13,12 @@ import {
   ApiOperation,
   ApiConsumes,
   ApiBody,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { QiniuService } from './service';
 import { PhotoService } from '../photo/service';
-import { FileListDto } from './dto/upload_file';
+import { AlbumService } from '../album/service';
 import { Result } from '../../utils/response';
-import { Paging } from '../../utils/paging';
 import { Photo } from '../../entity/photo';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -40,6 +33,7 @@ export class QiniuController {
   constructor(
     private readonly qiniuService: QiniuService,
     private readonly photoService: PhotoService,
+    private readonly albumService: AlbumService,
   ) {}
 
   /**
@@ -49,15 +43,15 @@ export class QiniuController {
   @ApiOperation({
     summary: '文件上传',
     description:
-      '支持批量上传，上传成功后自动保存图片信息到数据库，返回照片记录',
+      '支持批量上传，必须选择一个相册，上传成功后自动保存图片信息到数据库并关联到指定相册',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    description: '支持多选，仅限图片格式',
+    description: '支持多选，仅限图片格式，必须指定相册ID',
     required: true,
     schema: {
       type: 'object',
-      required: ['files'],
+      required: ['files', 'albumId'],
       properties: {
         files: {
           type: 'array',
@@ -68,13 +62,38 @@ export class QiniuController {
           minItems: 1,
           maxItems: 10,
         },
+        albumId: {
+          type: 'number',
+          description: '相册ID（必填）',
+          example: 1,
+        },
       },
     },
   })
   @UseInterceptors(FilesInterceptor('files', 10))
-  async uploadFile(@UploadedFiles() files: Express.Multer.File[]) {
+  async uploadFile(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('albumId') albumId: string,
+  ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('请至少上传一个文件');
+    }
+
+    // 验证相册ID
+    if (!albumId) {
+      throw new BadRequestException('必须选择一个相册');
+    }
+
+    const albumIdNum = parseInt(albumId, 10);
+    if (isNaN(albumIdNum)) {
+      throw new BadRequestException('相册ID格式不正确');
+    }
+
+    // 验证相册是否存在
+    try {
+      await this.albumService.findOne(albumIdNum);
+    } catch (error) {
+      throw new BadRequestException(`相册不存在：${error.message}`);
     }
 
     // 允许的图片格式
@@ -142,7 +161,6 @@ export class QiniuController {
         // 获取文件信息
         const fileInfo = await this.qiniuService.getFileInfo(uploadResult.key);
         const url = this.qiniuService.getPublicDownloadUrl(uploadResult.key);
-        this.logger.log(`生成的图片URL: ${url}`);
 
         // 获取图片尺寸信息
         let imageInfo: {
@@ -154,7 +172,6 @@ export class QiniuController {
         } | null = null;
 
         imageInfo = await this.qiniuService.getImageInfo(url);
-        this.logger.log(`获取到的图片信息: ${JSON.stringify(imageInfo)}`);
 
         // 创建照片记录
         const photo = await this.photoService.create({
@@ -169,143 +186,14 @@ export class QiniuController {
         photos.push(photo);
       }
 
-      return Result.success(`成功上传 ${photos.length} 个文件`, photos);
+      // 将所有照片添加到指定相册
+      const photoIds = photos.map((photo) => photo.id);
+      await this.albumService.addPhotos(albumIdNum, photoIds);
+
+      return Result.success('上传成功', photos);
     } catch (error) {
       this.logger.error(`文件上传失败: ${error.message}`);
       throw new BadRequestException(`文件上传失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 删除文件
-   */
-  @Delete('delete/:key')
-  @ApiOperation({
-    summary: '删除文件',
-    description:
-      '根据文件 key 从七牛云存储中删除指定文件。此操作不可恢复，请谨慎使用。',
-  })
-  @ApiParam({
-    name: 'key',
-    description: '文件在七牛云的唯一标识（key）',
-    example: '1699123456789-abc123def.jpg',
-    required: true,
-  })
-  async deleteFile(@Param('key') key: string) {
-    if (!key) {
-      throw new BadRequestException('文件key不能为空');
-    }
-
-    try {
-      await this.qiniuService.deleteFile(key);
-      return Result.success('文件删除成功', { key });
-    } catch (error) {
-      this.logger.error(`文件删除失败: ${error.message}`);
-      throw new BadRequestException(`文件删除失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 获取文件详情
-   */
-  @Get('info/:key')
-  @ApiOperation({
-    summary: '获取文件详情',
-    description:
-      '根据文件 key 获取文件的详细信息，包括文件大小、哈希值、MIME 类型、上传时间等。',
-  })
-  @ApiParam({
-    name: 'key',
-    description: '文件在七牛云的唯一标识（key）',
-    example: '1699123456789-abc123def.jpg',
-    required: true,
-  })
-  async getFileInfo(@Param('key') key: string) {
-    if (!key) {
-      throw new BadRequestException('文件key不能为空');
-    }
-
-    try {
-      const info = await this.qiniuService.getFileInfo(key);
-      const url = this.qiniuService.getPublicDownloadUrl(key);
-
-      return Result.success('获取文件信息成功', {
-        key: key,
-        url: url,
-        hash: info.hash,
-        size: info.fsize,
-        mimeType: info.mimeType,
-        putTime: new Date(info.putTime / 10000), // 七牛返回的时间是100纳秒为单位
-        type: info.type,
-      });
-    } catch (error) {
-      this.logger.error(`获取文件信息失败: ${error.message}`);
-      throw new BadRequestException(`获取文件信息失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 列举文件（分页）
-   */
-  @Get('list')
-  @ApiOperation({
-    summary: '列举文件（分页）',
-    description:
-      '获取七牛云存储空间中的文件列表，支持分页查询和前缀过滤。可用于文件浏览和管理。',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    description: '页码',
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: Number,
-    description: '每页数量',
-    example: 10,
-  })
-  @ApiQuery({
-    name: 'prefix',
-    required: false,
-    type: String,
-    description: '文件前缀过滤（例如：images/ 可以只列出 images 目录下的文件）',
-    example: 'images/',
-  })
-  async listFiles(@Query() query: FileListDto) {
-    try {
-      const page = query.page || 1;
-      const limit = query.limit || 10;
-      const prefix = query.prefix || '';
-
-      // 七牛云使用marker来实现分页，这里简化处理
-      const result = await this.qiniuService.listFiles(prefix, '', limit);
-
-      const items = result.items.map((item) => ({
-        key: item.key,
-        hash: item.hash,
-        size: item.fsize,
-        mimeType: item.mimeType,
-        putTime: new Date(item.putTime / 10000),
-        url: this.qiniuService.getPublicDownloadUrl(item.key),
-      }));
-
-      // 使用 Paging 工具格式化分页数据
-      // 注意：七牛云不提供总数，这里使用当前页的数据量作为参考
-      const pagingData = Paging.filter({
-        items: items,
-        total: items.length, // 当前页数据量
-        page: page,
-        size: limit,
-      });
-
-      // 添加七牛云特有的 marker 信息
-      return Result.success('获取文件列表成功', pagingData);
-    } catch (error) {
-      this.logger.error(`获取文件列表失败: ${error.message}`);
-      throw new BadRequestException(`获取文件列表失败: ${error.message}`);
     }
   }
 }

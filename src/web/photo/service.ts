@@ -5,6 +5,7 @@ import { Photo } from '../../entity/photo';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
 import { QueryPhotoDto } from './dto/query_photo';
+import { QiniuService } from '../qiniu/service';
 
 @Injectable()
 export class PhotoService {
@@ -13,6 +14,7 @@ export class PhotoService {
   constructor(
     @InjectRepository(Photo)
     private readonly photoRepository: Repository<Photo>,
+    private readonly qiniuService: QiniuService,
   ) {}
 
   /**
@@ -86,11 +88,35 @@ export class PhotoService {
   }
 
   /**
-   * 删除照片
+   * 删除照片（同时删除七牛云文件）
    */
   async remove(id: number): Promise<void> {
     const photo = await this.findOne(id);
 
+    // 从 URL 中提取七牛云文件的 key
+    try {
+      const url = new URL(photo.url);
+      const key = url.pathname.substring(1); // 去掉开头的 '/'
+
+      // 先从七牛云删除文件
+      if (key) {
+        try {
+          await this.qiniuService.deleteFile(key);
+          this.logger.log(`七牛云文件删除成功: ${key}`);
+        } catch (error) {
+          this.logger.warn(
+            `七牛云文件删除失败 (继续删除数据库记录): ${error.message}`,
+          );
+          // 即使七牛云删除失败，也继续删除数据库记录
+        }
+      }
+    } catch (error) {
+      this.logger.warn(
+        `解析照片 URL 失败 (继续删除数据库记录): ${error.message}`,
+      );
+    }
+
+    // 删除数据库记录
     await this.photoRepository.remove(photo);
     this.logger.log(`删除照片成功: ${id}`);
   }

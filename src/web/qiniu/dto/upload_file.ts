@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -13,6 +13,17 @@ export class UploadFileDto {
     example: 'file.jpg',
   })
   file: Express.Multer.File;
+
+  @ApiProperty({
+    description: '相册ID（必填，上传的图片将关联到该相册）',
+    example: 1,
+    type: Number,
+    required: true,
+  })
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty({ message: '相册ID不能为空' })
+  albumId: number;
 
   @ApiPropertyOptional({
     description: '自定义文件名（可选，不包含扩展名）',
@@ -35,61 +46,6 @@ export class BatchUploadDto {
     maxItems: 10,
   })
   files: Express.Multer.File[];
-}
-
-/**
- * 删除文件 DTO
- */
-export class DeleteFileDto {
-  @ApiProperty({
-    description: '要删除的文件key（文件在七牛云的唯一标识）',
-    example: '1699123456789-abc123def.jpg',
-    type: String,
-  })
-  @IsString()
-  key: string;
-}
-
-/**
- * 文件列表查询 DTO
- */
-export class FileListDto {
-  @ApiPropertyOptional({
-    description: '页码',
-    default: 1,
-    minimum: 1,
-    example: 1,
-    type: Number,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  page?: number;
-
-  @ApiPropertyOptional({
-    description: '每页数量',
-    default: 10,
-    minimum: 1,
-    maximum: 100,
-    example: 10,
-    type: Number,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-
-  @ApiPropertyOptional({
-    description: '文件前缀过滤（例如：images/ 可以只列出 images 目录下的文件）',
-    example: 'images/',
-    type: String,
-  })
-  @IsOptional()
-  @IsString()
-  prefix?: string;
 }
 
 /**
