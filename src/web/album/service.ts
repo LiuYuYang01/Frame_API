@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
 import { Album } from '../../entity/album';
 import { Photo } from '../../entity/photo';
-import { CreateAlbumDto } from './dto/create_album';
 import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
 
@@ -17,16 +16,6 @@ export class AlbumService {
     @InjectRepository(Photo)
     private readonly photoRepository: Repository<Photo>,
   ) {}
-
-  /**
-   * 创建相册
-   */
-  async create(createAlbumDto: CreateAlbumDto): Promise<Album> {
-    const album = this.albumRepository.create(createAlbumDto);
-    const result = await this.albumRepository.save(album);
-    this.logger.log(`创建相册成功: ${result.id} - ${result.name}`);
-    return result;
-  }
 
   /**
    * 查询相册列表（分页）

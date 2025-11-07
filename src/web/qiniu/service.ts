@@ -91,16 +91,6 @@ export class QiniuService {
   }
 
   /**
-   * 批量上传文件
-   * @param files 文件路径数组
-   * @returns Promise
-   */
-  async uploadFiles(files: string[]): Promise<{ hash: string; key: string }[]> {
-    const uploadPromises = files.map((file) => this.uploadFile(file));
-    return Promise.all(uploadPromises);
-  }
-
-  /**
    * 删除文件
    * @param key 文件key
    * @returns Promise
@@ -170,157 +160,12 @@ export class QiniuService {
   }
 
   /**
-   * 列举文件（分页）
-   * @param prefix 前缀
-   * @param marker 上次列举返回的位置标记
-   * @param limit 每次返回的最大列举文件数量
-   * @returns Promise
-   */
-
-  async listFiles(
-    prefix: string = '',
-    marker: string = '',
-    limit: number = 10,
-  ): Promise<{
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    items: any[];
-    marker: string;
-    commonPrefixes: string[];
-  }> {
-    return new Promise((resolve, reject) => {
-      void this.bucketManager.listPrefix(
-        qiniuConfig.bucket,
-        {
-          prefix: prefix,
-          limit: limit,
-          marker: marker,
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, respBody: any, respInfo: any) => {
-          if (err) {
-            this.logger.error(`列举文件失败: ${err.message}`);
-            reject(err);
-            return;
-          }
-
-          if (respInfo.statusCode === 200) {
-            this.logger.log(`列举文件成功，共 ${respBody.items.length} 个`);
-            resolve({
-              items: respBody.items,
-
-              marker: respBody.marker || '',
-
-              commonPrefixes: respBody.commonPrefixes || [],
-            });
-          } else {
-            this.logger.error(`列举文件失败: ${respInfo.statusCode}`);
-
-            reject(new Error(`列举文件失败: ${respInfo.statusCode}`));
-          }
-        },
-      );
-    });
-  }
-
-  /**
-   * 生成私有空间下载链接
-   * @param key 文件key
-   * @param expires 过期时间（秒）
-   * @returns 下载链接
-   */
-  getPrivateDownloadUrl(key: string, expires: number = 3600): string {
-    const bucketManager = new qiniu.rs.BucketManager(this.mac, this.config);
-    const deadline = Math.floor(Date.now() / 1000) + expires;
-    return bucketManager.privateDownloadUrl(qiniuConfig.domain, key, deadline);
-  }
-
-  /**
    * 生成公开空间访问链接
    * @param key 文件key
    * @returns 访问链接
    */
   getPublicDownloadUrl(key: string): string {
     return `${qiniuConfig.domain}/${key}`;
-  }
-
-  /**
-   * 移动/重命名文件
-   * @param srcKey 源文件key
-   * @param destKey 目标文件key
-   * @param force 是否强制覆盖
-   * @returns Promise
-   */
-  async moveFile(
-    srcKey: string,
-    destKey: string,
-    force: boolean = false,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      void this.bucketManager.move(
-        qiniuConfig.bucket,
-        srcKey,
-        qiniuConfig.bucket,
-        destKey,
-        { force },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, respBody: any, respInfo: any) => {
-          if (err) {
-            this.logger.error(`移动文件失败: ${err.message}`);
-            reject(err);
-            return;
-          }
-
-          if (respInfo.statusCode === 200) {
-            this.logger.log(`移动文件成功: ${srcKey} -> ${destKey}`);
-            resolve();
-          } else {
-            this.logger.error(`移动文件失败: ${respInfo.statusCode}`);
-
-            reject(new Error(`移动文件失败: ${respInfo.statusCode}`));
-          }
-        },
-      );
-    });
-  }
-
-  /**
-   * 复制文件
-   * @param srcKey 源文件key
-   * @param destKey 目标文件key
-   * @param force 是否强制覆盖
-   * @returns Promise
-   */
-  async copyFile(
-    srcKey: string,
-    destKey: string,
-    force: boolean = false,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      void this.bucketManager.copy(
-        qiniuConfig.bucket,
-        srcKey,
-        qiniuConfig.bucket,
-        destKey,
-        { force },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, respBody: any, respInfo: any) => {
-          if (err) {
-            this.logger.error(`复制文件失败: ${err.message}`);
-            reject(err);
-            return;
-          }
-
-          if (respInfo.statusCode === 200) {
-            this.logger.log(`复制文件成功: ${srcKey} -> ${destKey}`);
-            resolve();
-          } else {
-            this.logger.error(`复制文件失败: ${respInfo.statusCode}`);
-
-            reject(new Error(`复制文件失败: ${respInfo.statusCode}`));
-          }
-        },
-      );
-    });
   }
 
   /**
@@ -338,12 +183,9 @@ export class QiniuService {
     try {
       // 使用七牛云的图片信息接口
       const imageInfoUrl = `${url}?imageInfo`;
-      this.logger.log(`正在获取图片信息: ${imageInfoUrl}`);
 
       // 使用 fetch 或其他 HTTP 客户端获取图片信息
       const response = await fetch(imageInfoUrl);
-
-      this.logger.log(`图片信息接口响应状态: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -354,7 +196,6 @@ export class QiniuService {
       }
 
       const responseText = await response.text();
-      this.logger.log(`图片信息接口响应内容: ${responseText}`);
 
       const info = JSON.parse(responseText);
 

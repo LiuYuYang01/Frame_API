@@ -16,7 +16,6 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { AlbumService } from './service';
-import { CreateAlbumDto } from './dto/create_album';
 import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
 import { QueryAlbumPhotosDto } from './dto/query_album_photos';
@@ -29,13 +28,6 @@ import { Paging } from '../../utils/paging';
 @Controller('album')
 export class AlbumController {
   constructor(private readonly albumService: AlbumService) {}
-
-  @Post()
-  @ApiOperation({ summary: '创建相册', description: '创建新的相册' })
-  async create(@Body() createAlbumDto: CreateAlbumDto) {
-    const album = await this.albumService.create(createAlbumDto);
-    return Result.success('相册创建成功', album);
-  }
 
   @Get()
   @ApiOperation({

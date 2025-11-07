@@ -94,29 +94,29 @@ export class PhotoService {
     const photo = await this.findOne(id);
 
     // 从 URL 中提取七牛云文件的 key
+    let key: string;
     try {
       const url = new URL(photo.url);
-      const key = url.pathname.substring(1); // 去掉开头的 '/'
-
-      // 先从七牛云删除文件
-      if (key) {
-        try {
-          await this.qiniuService.deleteFile(key);
-          this.logger.log(`七牛云文件删除成功: ${key}`);
-        } catch (error) {
-          this.logger.warn(
-            `七牛云文件删除失败 (继续删除数据库记录): ${error.message}`,
-          );
-          // 即使七牛云删除失败，也继续删除数据库记录
-        }
-      }
+      key = url.pathname.substring(1); // 去掉开头的 '/'
     } catch (error) {
-      this.logger.warn(
-        `解析照片 URL 失败 (继续删除数据库记录): ${error.message}`,
-      );
+      this.logger.error(`解析照片 URL 失败: ${error.message}`);
+      throw new Error(`无法解析照片 URL: ${photo.url}`);
     }
 
-    // 删除数据库记录
+    // 先从七牛云删除文件，如果失败则抛出异常
+    if (!key) {
+      throw new Error('无法从 URL 中提取文件 key');
+    }
+
+    try {
+      await this.qiniuService.deleteFile(key);
+      this.logger.log(`七牛云文件删除成功: ${key}`);
+    } catch (error) {
+      this.logger.error(`七牛云文件删除失败: ${error.message}`);
+      throw new Error(`七牛云文件删除失败: ${error.message}`);
+    }
+
+    // 七牛云删除成功后，再删除数据库记录
     await this.photoRepository.remove(photo);
     this.logger.log(`删除照片成功: ${id}`);
   }
