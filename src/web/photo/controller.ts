@@ -1,19 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  ParseIntPipe,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PhotoService } from './service';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
@@ -56,10 +42,7 @@ export class PhotoController {
     example: 1,
     type: Number,
   })
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updatePhotoDto: UpdatePhotoDto,
-  ) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updatePhotoDto: UpdatePhotoDto) {
     const photo = await this.photoService.update(id, updatePhotoDto);
     return Result.success('照片更新成功', photo);
   }

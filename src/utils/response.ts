@@ -41,10 +41,7 @@ export class Result<T> {
   static error(): Result<null>;
   static error<T>(message: string): Result<T>;
   static error<T>(code: number, message: string): Result<T>;
-  static error<T>(
-    codeOrMessage?: number | string,
-    message?: string,
-  ): Result<T | null> {
+  static error<T>(codeOrMessage?: number | string, message?: string): Result<T | null> {
     if (arguments.length === 0) {
       return new Result<null>(400, 'no', null);
     }

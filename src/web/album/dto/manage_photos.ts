@@ -12,4 +12,3 @@ export class ManagePhotosDto {
   @IsNumber({}, { each: true })
   photo_ids: number[];
 }
-

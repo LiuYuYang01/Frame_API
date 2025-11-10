@@ -36,4 +36,3 @@ export class QueryPhotoDto {
   @IsString()
   keyword?: string;
 }
-

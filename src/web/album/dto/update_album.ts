@@ -29,4 +29,3 @@ export class UpdateAlbumDto {
   @IsString()
   cover?: string;
 }
-

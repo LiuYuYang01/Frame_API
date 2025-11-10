@@ -1,20 +1,6 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseInterceptors,
-  UploadedFiles,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseInterceptors, UploadedFiles, BadRequestException, Logger } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiConsumes,
-  ApiBody,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { QiniuService } from './service';
 import { PhotoService } from '../photo/service';
 import { AlbumService } from '../album/service';
@@ -42,8 +28,7 @@ export class FileController {
   @Post('upload')
   @ApiOperation({
     summary: '文件上传',
-    description:
-      '支持批量上传，必须选择一个相册，上传成功后自动保存图片信息到数据库并关联到指定相册',
+    description: '支持批量上传，必须选择一个相册，上传成功后自动保存图片信息到数据库并关联到指定相册',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -71,10 +56,7 @@ export class FileController {
     },
   })
   @UseInterceptors(FilesInterceptor('files', 10))
-  async uploadFile(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Body('albumId') albumId: string,
-  ) {
+  async uploadFile(@UploadedFiles() files: Express.Multer.File[], @Body('albumId') albumId: string) {
     if (!files || files.length === 0) {
       throw new BadRequestException('请至少上传一个文件');
     }
@@ -97,35 +79,16 @@ export class FileController {
     }
 
     // 允许的图片格式
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/bmp',
-    ];
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
 
-    const allowedExtensions = [
-      '.jpg',
-      '.jpeg',
-      '.png',
-      '.gif',
-      '.webp',
-      '.bmp',
-    ];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
 
     // 验证所有文件都是图片格式
     for (const file of files) {
       const ext = path.extname(file.originalname).toLowerCase();
 
-      if (
-        !allowedMimeTypes.includes(file.mimetype) ||
-        !allowedExtensions.includes(ext)
-      ) {
-        throw new BadRequestException(
-          '仅支持的图片格式：jpg、jpeg、png、gif、webp、bmp',
-        );
+      if (!allowedMimeTypes.includes(file.mimetype) || !allowedExtensions.includes(ext)) {
+        throw new BadRequestException('仅支持的图片格式：jpg、jpeg、png、gif、webp、bmp');
       }
     }
 
@@ -139,10 +102,7 @@ export class FileController {
 
       for (const file of files) {
         // 计算文件哈希值（使用 MD5）
-        const fileHash = crypto
-          .createHash('md5')
-          .update(file.buffer)
-          .digest('hex');
+        const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
 
         const tempFilePath = path.join(tempDir, file.originalname);
         fs.writeFileSync(tempFilePath, file.buffer);
@@ -152,10 +112,7 @@ export class FileController {
         const key = `${fileHash}${ext}`;
 
         // 文件上传
-        const uploadResult = await this.qiniuService.uploadFile(
-          tempFilePath,
-          key,
-        );
+        const uploadResult = await this.qiniuService.uploadFile(tempFilePath, key);
         fs.unlinkSync(tempFilePath);
 
         // 获取文件信息

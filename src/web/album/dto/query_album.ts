@@ -36,4 +36,3 @@ export class QueryAlbumDto {
   @IsString()
   keyword?: string;
 }
-

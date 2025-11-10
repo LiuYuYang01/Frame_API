@@ -11,4 +11,3 @@ export class UpdatePhotoDto {
   @IsString()
   name?: string;
 }
-

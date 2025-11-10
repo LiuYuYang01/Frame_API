@@ -43,12 +43,7 @@ export class AlbumService {
     // 为每个相册查询照片数量
     const itemsWithCount = await Promise.all(
       items.map(async (album) => {
-        const count = await this.albumRepository
-          .createQueryBuilder('album')
-          .leftJoin('album.photos', 'photo')
-          .where('album.id = :id', { id: album.id })
-          .select('COUNT(photo.id)', 'count')
-          .getRawOne();
+        const count = await this.albumRepository.createQueryBuilder('album').leftJoin('album.photos', 'photo').where('album.id = :id', { id: album.id }).select('COUNT(photo.id)', 'count').getRawOne();
 
         return {
           ...album,
@@ -88,12 +83,7 @@ export class AlbumService {
   async findOneWithCount(id: number): Promise<Album & { photo_count: number }> {
     const album = await this.findOne(id);
 
-    const count = await this.albumRepository
-      .createQueryBuilder('album')
-      .leftJoin('album.photos', 'photo')
-      .where('album.id = :id', { id: album.id })
-      .select('COUNT(photo.id)', 'count')
-      .getRawOne();
+    const count = await this.albumRepository.createQueryBuilder('album').leftJoin('album.photos', 'photo').where('album.id = :id', { id: album.id }).select('COUNT(photo.id)', 'count').getRawOne();
 
     return {
       ...album,
@@ -120,10 +110,7 @@ export class AlbumService {
   /**
    * 更新相册
    */
-  async update(
-    id: number,
-    updateAlbumDto: UpdateAlbumDto,
-  ): Promise<Album & { photo_count: number }> {
+  async update(id: number, updateAlbumDto: UpdateAlbumDto): Promise<Album & { photo_count: number }> {
     const album = await this.findOne(id);
 
     Object.assign(album, updateAlbumDto);
@@ -211,9 +198,7 @@ export class AlbumService {
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(
-      `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`,
-    );
+    this.logger.log(`查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`);
 
     return {
       items,

@@ -1,20 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  ParseIntPipe,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { AlbumService } from './service';
 import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
@@ -74,10 +59,7 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateAlbumDto: UpdateAlbumDto,
-  ) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updateAlbumDto: UpdateAlbumDto) {
     const album = await this.albumService.update(id, updateAlbumDto);
     return Result.success('相册更新成功', album);
   }
@@ -109,10 +91,7 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async addPhotos(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() managePhotosDto: ManagePhotosDto,
-  ) {
+  async addPhotos(@Param('id', ParseIntPipe) id: number, @Body() managePhotosDto: ManagePhotosDto) {
     await this.albumService.addPhotos(id, managePhotosDto.photo_ids);
     return Result.success('添加照片到相册成功', null);
   }
@@ -128,10 +107,7 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async removePhotos(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() managePhotosDto: ManagePhotosDto,
-  ) {
+  async removePhotos(@Param('id', ParseIntPipe) id: number, @Body() managePhotosDto: ManagePhotosDto) {
     await this.albumService.removePhotos(id, managePhotosDto.photo_ids);
     return Result.success('从相册移除照片成功', null);
   }
@@ -147,15 +123,8 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async getPhotos(
-    @Param('id', ParseIntPipe) id: number,
-    @Query() query: QueryAlbumPhotosDto,
-  ) {
-    const result = await this.albumService.getPhotosPaginated(
-      id,
-      query.page,
-      query.limit,
-    );
+  async getPhotos(@Param('id', ParseIntPipe) id: number, @Query() query: QueryAlbumPhotosDto) {
+    const result = await this.albumService.getPhotosPaginated(id, query.page, query.limit);
 
     const pagingData = Paging.filter({
       items: result.items,

@@ -27,9 +27,7 @@ async function bootstrap() {
   // Swagger 配置
   const config = new DocumentBuilder()
     .setTitle('NestJS API 文档')
-    .setDescription(
-      'NestJS 应用程序接口文档，包含用户管理、文件管理、相册管理、照片管理等模块',
-    )
+    .setDescription('NestJS 应用程序接口文档，包含用户管理、文件管理、相册管理、照片管理等模块')
     .setVersion('1.0.0')
     .addTag('用户管理', '用户相关接口')
     .addTag('文件管理', '文件上传、下载、删除等操作')
@@ -48,11 +46,7 @@ async function bootstrap() {
     )
     .addServer('http://localhost:3000', '开发环境')
     .addServer('https://api.example.com', '生产环境')
-    .setContact(
-      '技术支持',
-      'https://github.com/your-repo',
-      'support@example.com',
-    )
+    .setContact('技术支持', 'https://github.com/your-repo', 'support@example.com')
     .setLicense('MIT', 'https://opensource.org/licenses/MIT')
     .build();
 
@@ -70,12 +64,8 @@ async function bootstrap() {
   });
 
   await app.listen(process.env.PORT ?? 3000);
-  console.log(
-    `🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 3000}`,
-  );
-  console.log(
-    `📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/api`,
-  );
+  console.log(`🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 3000}`);
+  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/api`);
 }
 
 bootstrap().catch((err) => {

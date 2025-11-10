@@ -7,10 +7,8 @@ export interface QiniuConfig {
 }
 
 export const qiniuConfig: QiniuConfig = {
-  accessKey:
-    process.env.QINIU_ACCESS_KEY || 'ga4bLt2LD1T-hP6sqf3QG3N9bSwfYWwP-fVcv9n6',
-  secretKey:
-    process.env.QINIU_SECRET_KEY || '-1yPaVCWQP1P5SjwmITo5yMWe2LEp_6ohpxsRp8z',
+  accessKey: process.env.QINIU_ACCESS_KEY || 'ga4bLt2LD1T-hP6sqf3QG3N9bSwfYWwP-fVcv9n6',
+  secretKey: process.env.QINIU_SECRET_KEY || '-1yPaVCWQP1P5SjwmITo5yMWe2LEp_6ohpxsRp8z',
   bucket: process.env.QINIU_BUCKET || 'liuyuyang',
   domain: process.env.QINIU_DOMAIN || 'http://store.liuyuyang.net',
   zone: process.env.QINIU_ZONE || 'Zone_z2',

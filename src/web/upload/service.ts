@@ -12,10 +12,7 @@ export class QiniuService {
 
   constructor() {
     // 初始化七牛云配置
-    this.mac = new qiniu.auth.digest.Mac(
-      qiniuConfig.accessKey,
-      qiniuConfig.secretKey,
-    );
+    this.mac = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
 
     this.config = new qiniu.conf.Config();
     // 根据配置设置区域
@@ -45,10 +42,7 @@ export class QiniuService {
    * @param key 保存到七牛云的文件名
    * @returns Promise
    */
-  async uploadFile(
-    localFile: string,
-    key?: string,
-  ): Promise<{ hash: string; key: string }> {
+  async uploadFile(localFile: string, key?: string): Promise<{ hash: string; key: string }> {
     return new Promise((resolve, reject) => {
       // 生成文件名（如果未指定）
       if (!key) {
@@ -189,9 +183,7 @@ export class QiniuService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(
-          `获取图片信息失败: ${response.status} ${response.statusText}, 响应内容: ${errorText}`,
-        );
+        this.logger.error(`获取图片信息失败: ${response.status} ${response.statusText}, 响应内容: ${errorText}`);
         return null;
       }
 
@@ -207,9 +199,7 @@ export class QiniuService {
         colorModel: info.colorModel,
       };
     } catch (error) {
-      this.logger.error(
-        `获取图片信息失败: ${error.message}, 错误栈: ${error.stack}`,
-      );
+      this.logger.error(`获取图片信息失败: ${error.message}, 错误栈: ${error.stack}`);
       return null;
     }
   }
