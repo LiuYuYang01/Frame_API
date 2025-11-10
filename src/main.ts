@@ -28,11 +28,11 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('NestJS API 文档')
     .setDescription(
-      'NestJS 应用程序接口文档，包含用户管理、七牛云文件管理、相册管理、照片管理等模块',
+      'NestJS 应用程序接口文档，包含用户管理、文件管理、相册管理、照片管理等模块',
     )
     .setVersion('1.0.0')
     .addTag('用户管理', '用户相关接口')
-    .addTag('七牛云文件管理', '文件上传、下载、删除等操作')
+    .addTag('文件管理', '文件上传、下载、删除等操作')
     .addTag('照片管理', '照片的增删改查操作')
     .addTag('相册管理', '相册的增删改查、添加/移除照片等操作')
     .addBearerAuth(
