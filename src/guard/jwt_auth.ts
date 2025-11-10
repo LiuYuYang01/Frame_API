@@ -9,18 +9,17 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
+  // 扩展 canActivate 方法
   canActivate(context: ExecutionContext) {
     // 检查是否有 @Public 装饰器，如果有则跳过认证
     const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [context.getHandler(), context.getClass()]);
-
     if (isPublic) return true;
-
     return super.canActivate(context);
   }
 
   handleRequest<TUser = User>(err: Error | null, user: TUser | false): TUser {
     if (err || !user) {
-      throw err || new UnauthorizedException('token 无效或已过期，请重新登录');
+      throw err || new UnauthorizedException('Token 无效或已过期，请重新登录');
     }
     return user;
   }
