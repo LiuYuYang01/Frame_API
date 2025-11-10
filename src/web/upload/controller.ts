@@ -1,11 +1,12 @@
-import { Controller, Post, Body, UseInterceptors, UploadedFiles, BadRequestException, Logger } from '@nestjs/common';
+import { Controller, Post, Body, UseInterceptors, UploadedFiles, Logger } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { QiniuService } from './service';
-import { PhotoService } from '../photo/service';
-import { AlbumService } from '../album/service';
-import { Result } from '../../utils/response';
-import { Photo } from '../../entity/photo';
+import { PhotoService } from '@/web/photo/service';
+import { AlbumService } from '@/web/album/service';
+import { Result } from '@/utils/response';
+import { Photo } from '@/entity/photo';
+import { CustomException } from '@/execption/global_exception_handler';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -58,24 +59,24 @@ export class FileController {
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadFile(@UploadedFiles() files: Express.Multer.File[], @Body('albumId') albumId: string) {
     if (!files || files.length === 0) {
-      throw new BadRequestException('请至少上传一个文件');
+      throw new CustomException(400, '请至少上传一个文件');
     }
 
     // 验证相册ID
     if (!albumId) {
-      throw new BadRequestException('必须选择一个相册');
+      throw new CustomException(400, '必须选择一个相册');
     }
 
     const albumIdNum = parseInt(albumId, 10);
     if (isNaN(albumIdNum)) {
-      throw new BadRequestException('相册ID格式不正确');
+      throw new CustomException(400, '相册ID格式不正确');
     }
 
     // 验证相册是否存在
     try {
       await this.albumService.findOne(albumIdNum);
     } catch (error) {
-      throw new BadRequestException(`相册不存在：${error.message}`);
+      throw new CustomException(400, `相册不存在：${error.message}`);
     }
 
     // 允许的图片格式
@@ -88,7 +89,7 @@ export class FileController {
       const ext = path.extname(file.originalname).toLowerCase();
 
       if (!allowedMimeTypes.includes(file.mimetype) || !allowedExtensions.includes(ext)) {
-        throw new BadRequestException('仅支持的图片格式：jpg、jpeg、png、gif、webp、bmp');
+        throw new CustomException(400, '仅支持的图片格式：jpg、jpeg、png、gif、webp、bmp');
       }
     }
 
@@ -150,7 +151,7 @@ export class FileController {
       return Result.success('上传成功', photos);
     } catch (error) {
       this.logger.error(`文件上传失败: ${error.message}`);
-      throw new BadRequestException(`文件上传失败: ${error.message}`);
+      throw new CustomException(500, `文件上传失败: ${error.message}`);
     }
   }
 }

@@ -2,9 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { GlobalExceptionHandler } from './execption/global_exception_handler';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // 启用全局异常过滤器
+  app.useGlobalFilters(new GlobalExceptionHandler());
 
   // 启用全局验证管道
   app.useGlobalPipes(

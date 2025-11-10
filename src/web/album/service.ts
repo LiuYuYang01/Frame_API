@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
-import { Album } from '../../entity/album';
-import { Photo } from '../../entity/photo';
+import { Album } from '@/entity/album';
+import { Photo } from '@/entity/photo';
 import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
+import { CustomException } from '@/execption/global_exception_handler';
 
 @Injectable()
 export class AlbumService {
@@ -20,12 +21,7 @@ export class AlbumService {
   /**
    * 查询相册列表（分页）
    */
-  async findAll(query: QueryAlbumDto): Promise<{
-    items: Array<Album & { photo_count: number }>;
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  async findAll(query: QueryAlbumDto) {
     const { page = 1, limit = 10, keyword } = query;
 
     const whereCondition = keyword ? { name: Like(`%${keyword}%`) } : {};
@@ -65,13 +61,13 @@ export class AlbumService {
   /**
    * 根据ID查询相册详情（不加载照片列表）
    */
-  async findOne(id: number): Promise<Album> {
+  async findOne(id: number) {
     const album = await this.albumRepository.findOne({
       where: { id },
     });
 
     if (!album) {
-      throw new NotFoundException(`相册 ID ${id} 不存在`);
+      throw new CustomException(404, `相册 ID ${id} 不存在`);
     }
 
     return album;
@@ -80,7 +76,7 @@ export class AlbumService {
   /**
    * 根据ID查询相册详情（包含照片数量）
    */
-  async findOneWithCount(id: number): Promise<Album & { photo_count: number }> {
+  async findOneWithCount(id: number) {
     const album = await this.findOne(id);
 
     const count = await this.albumRepository.createQueryBuilder('album').leftJoin('album.photos', 'photo').where('album.id = :id', { id: album.id }).select('COUNT(photo.id)', 'count').getRawOne();
@@ -94,14 +90,14 @@ export class AlbumService {
   /**
    * 根据ID查询相册（包含照片关系，用于内部操作）
    */
-  private async findOneWithPhotos(id: number): Promise<Album> {
+  private async findOneWithPhotos(id: number) {
     const album = await this.albumRepository.findOne({
       where: { id },
       relations: ['photos'],
     });
 
     if (!album) {
-      throw new NotFoundException(`相册 ID ${id} 不存在`);
+      throw new CustomException(404, `相册 ID ${id} 不存在`);
     }
 
     return album;
@@ -110,7 +106,7 @@ export class AlbumService {
   /**
    * 更新相册
    */
-  async update(id: number, updateAlbumDto: UpdateAlbumDto): Promise<Album & { photo_count: number }> {
+  async update(id: number, updateAlbumDto: UpdateAlbumDto) {
     const album = await this.findOne(id);
 
     Object.assign(album, updateAlbumDto);
@@ -125,7 +121,7 @@ export class AlbumService {
   /**
    * 删除相册
    */
-  async remove(id: number): Promise<void> {
+  async remove(id: number) {
     const album = await this.findOne(id);
 
     await this.albumRepository.remove(album);
@@ -135,7 +131,7 @@ export class AlbumService {
   /**
    * 向相册添加照片
    */
-  async addPhotos(albumId: number, photoIds: number[]): Promise<void> {
+  async addPhotos(albumId: number, photoIds: number[]) {
     const album = await this.findOneWithPhotos(albumId);
 
     // 查询要添加的照片
@@ -144,7 +140,7 @@ export class AlbumService {
     });
 
     if (photosToAdd.length !== photoIds.length) {
-      throw new NotFoundException('部分照片不存在');
+      throw new CustomException(404, '部分照片不存在');
     }
 
     // 合并照片（避免重复）
@@ -160,7 +156,7 @@ export class AlbumService {
   /**
    * 从相册移除照片
    */
-  async removePhotos(albumId: number, photoIds: number[]): Promise<void> {
+  async removePhotos(albumId: number, photoIds: number[]) {
     const album = await this.findOneWithPhotos(albumId);
 
     // 过滤掉要移除的照片
@@ -174,16 +170,7 @@ export class AlbumService {
   /**
    * 分页查询相册中的照片
    */
-  async getPhotosPaginated(
-    albumId: number,
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    items: Photo[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  async getPhotosPaginated(albumId: number, page: number = 1, limit: number = 10) {
     // 先验证相册是否存在
     await this.findOne(albumId);
 

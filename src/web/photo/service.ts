@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
-import { Photo } from '../../entity/photo';
+import { Photo } from '@/entity/photo';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
-import { QiniuService } from '../upload/service';
+import { QiniuService } from '@/web/upload/service';
+import { CustomException } from '@/execption/global_exception_handler';
 
 @Injectable()
 export class PhotoService {
@@ -19,7 +20,7 @@ export class PhotoService {
   /**
    * 创建照片
    */
-  async create(createPhotoDto: CreatePhotoDto): Promise<Photo> {
+  async create(createPhotoDto: CreatePhotoDto) {
     const photo = this.photoRepository.create(createPhotoDto);
     const result = await this.photoRepository.save(photo);
     this.logger.log(`创建照片成功: ${result.id} - ${result.name}`);
@@ -29,13 +30,13 @@ export class PhotoService {
   /**
    * 根据ID查询照片详情
    */
-  async findOne(id: number): Promise<Photo> {
+  async findOne(id: number) {
     const photo = await this.photoRepository.findOne({
       where: { id },
     });
 
     if (!photo) {
-      throw new NotFoundException(`照片 ID ${id} 不存在`);
+      throw new CustomException(404, `照片 ID ${id} 不存在`);
     }
 
     return photo;
@@ -44,7 +45,7 @@ export class PhotoService {
   /**
    * 更新照片
    */
-  async update(id: number, updatePhotoDto: UpdatePhotoDto): Promise<Photo> {
+  async update(id: number, updatePhotoDto: UpdatePhotoDto) {
     const photo = await this.findOne(id);
 
     Object.assign(photo, updatePhotoDto);
@@ -57,7 +58,7 @@ export class PhotoService {
   /**
    * 删除照片（同时删除七牛云文件）
    */
-  async remove(id: number): Promise<void> {
+  async remove(id: number) {
     const photo = await this.findOne(id);
 
     // 从 URL 中提取七牛云文件的 key
@@ -67,12 +68,12 @@ export class PhotoService {
       key = url.pathname.substring(1); // 去掉开头的 '/'
     } catch (error) {
       this.logger.error(`解析照片 URL 失败: ${error.message}`);
-      throw new Error(`无法解析照片 URL: ${photo.url}`);
+      throw new CustomException(400, `无法解析照片 URL: ${photo.url}`);
     }
 
     // 先从七牛云删除文件，如果失败则抛出异常
     if (!key) {
-      throw new Error('无法从 URL 中提取文件 key');
+      throw new CustomException(400, '无法从 URL 中提取文件 key');
     }
 
     try {
@@ -80,7 +81,7 @@ export class PhotoService {
       this.logger.log(`七牛云文件删除成功: ${key}`);
     } catch (error) {
       this.logger.error(`七牛云文件删除失败: ${error.message}`);
-      throw new Error(`七牛云文件删除失败: ${error.message}`);
+      throw new CustomException(500, `七牛云文件删除失败: ${error.message}`);
     }
 
     // 七牛云删除成功后，再删除数据库记录
@@ -91,7 +92,7 @@ export class PhotoService {
   /**
    * 批量创建照片
    */
-  async createBatch(createPhotoDtos: CreatePhotoDto[]): Promise<Photo[]> {
+  async createBatch(createPhotoDtos: CreatePhotoDto[]) {
     const photos = this.photoRepository.create(createPhotoDtos);
     const results = await this.photoRepository.save(photos);
     this.logger.log(`批量创建照片成功，共 ${results.length} 张`);
@@ -101,7 +102,7 @@ export class PhotoService {
   /**
    * 根据多个ID查询照片
    */
-  async findByIds(ids: number[]): Promise<Photo[]> {
+  async findByIds(ids: number[]) {
     if (!ids || ids.length === 0) {
       return [];
     }

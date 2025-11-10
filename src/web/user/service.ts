@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from '../../entity/user';
+import { User } from '@/entity/user';
 import { LoginDto } from './dto/login';
-import { LoginResponse } from './dto/login_response';
+import { CustomException } from '@/execption/global_exception_handler';
 
 @Injectable()
 export class UserService {
@@ -18,20 +18,20 @@ export class UserService {
   /**
    * 用户登录
    */
-  async login(loginDto: LoginDto): Promise<LoginResponse> {
+  async login(loginDto: LoginDto) {
     const { username, password } = loginDto;
 
     // 查找用户（使用 email 字段）
     const user = await this.userRepository.findOne({ where: { username } });
 
     if (!user) {
-      throw new UnauthorizedException('账号不存在');
+      throw new CustomException(401, '账号不存在');
     }
 
     // 验证密码
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('密码错误');
+      throw new CustomException(401, '密码错误');
     }
 
     // 生成 JWT token，有效期 3 天
