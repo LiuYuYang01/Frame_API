@@ -5,8 +5,8 @@ import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
 import { QueryAlbumPhotosDto } from './dto/query_album_photos';
 import { ManagePhotosDto } from './dto/manage_photos';
-import { Result } from '../../utils/response';
-import { Paging } from '../../utils/paging';
+import { Result } from '@/utils/response';
+import { Paging } from '@/utils/paging';
 
 @ApiTags('相册管理')
 @ApiBearerAuth('JWT-auth')
@@ -60,8 +60,8 @@ export class AlbumController {
     type: Number,
   })
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateAlbumDto: UpdateAlbumDto) {
-    const album = await this.albumService.update(id, updateAlbumDto);
-    return Result.success('相册更新成功', album);
+    await this.albumService.update(id, updateAlbumDto);
+    return Result.success('相册更新成功');
   }
 
   @Delete(':id')

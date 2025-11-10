@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../entity/user';
+import { User } from '@/entity/user';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -14,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'your-secret-key-change-in-production', // 在生产环境中应该使用环境变量
+      secretOrKey: 'liuyuyang1024', // 在生产环境中应该使用环境变量
     });
   }
 
@@ -22,9 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const { userId } = payload;
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
-    if (!user) {
-      throw new UnauthorizedException('用户不存在');
-    }
+    if (!user) throw new UnauthorizedException('用户不存在');
 
     return user;
   }
