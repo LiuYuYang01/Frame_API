@@ -2,8 +2,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PhotoService } from './service';
 import { PhotoController } from './controller';
-import { Photo } from '../../entity/photo';
-import { FileModule } from '../upload/module';
+import { Photo } from '@/entity/photo';
+import { FileModule } from '@/web/upload/module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Photo]), forwardRef(() => FileModule)],

@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger'
 import { PhotoService } from './service';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
-import { Result } from '../../utils/response';
+import { Result } from '@/utils/response';
 
 @ApiTags('照片管理')
 @ApiBearerAuth('JWT-auth')

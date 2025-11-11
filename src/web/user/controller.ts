@@ -3,8 +3,8 @@ import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { UserService } from './service';
 import { LoginDto } from './dto/login';
 import { LoginResponse } from './dto/login_response';
-import { Public } from '../../decorator/public';
-import { Result } from '../../utils/response';
+import { Public } from '@/decorator/public';
+import { Result } from '@/utils/response';
 
 @ApiTags('用户管理')
 @Controller('user')

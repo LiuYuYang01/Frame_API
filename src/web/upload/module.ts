@@ -1,8 +1,8 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { FileController } from './controller';
 import { QiniuService } from './service';
-import { PhotoModule } from '../photo/module';
-import { AlbumModule } from '../album/module';
+import { PhotoModule } from '@/web/photo/module';
+import { AlbumModule } from '@/web/album/module';
 
 @Module({
   imports: [forwardRef(() => PhotoModule), AlbumModule],
