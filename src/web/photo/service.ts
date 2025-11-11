@@ -20,8 +20,8 @@ export class PhotoService {
   /**
    * 创建照片
    */
-  async create(createPhotoDto: CreatePhotoDto) {
-    const photo = this.photoRepository.create(createPhotoDto);
+  async createPhoto(data: CreatePhotoDto) {
+    const photo = this.photoRepository.create(data);
     const result = await this.photoRepository.save(photo);
     this.logger.log(`创建照片成功: ${result.id} - ${result.name}`);
     return result;
@@ -30,7 +30,7 @@ export class PhotoService {
   /**
    * 根据ID查询照片详情
    */
-  async findOne(id: number) {
+  async getPhotoDetail(id: number) {
     const photo = await this.photoRepository.findOne({
       where: { id },
     });
@@ -45,10 +45,10 @@ export class PhotoService {
   /**
    * 更新照片
    */
-  async update(id: number, updatePhotoDto: UpdatePhotoDto) {
-    const photo = await this.findOne(id);
+  async updatePhoto(id: number, data: UpdatePhotoDto) {
+    const photo = await this.getPhotoDetail(id);
 
-    Object.assign(photo, updatePhotoDto);
+    Object.assign(photo, data);
     const result = await this.photoRepository.save(photo);
 
     this.logger.log(`更新照片成功: ${result.id} - ${result.name}`);
@@ -58,8 +58,8 @@ export class PhotoService {
   /**
    * 删除照片（同时删除七牛云文件）
    */
-  async remove(id: number) {
-    const photo = await this.findOne(id);
+  async delPhoto(id: number) {
+    const photo = await this.getPhotoDetail(id);
 
     // 从 URL 中提取七牛云文件的 key
     let key: string;
@@ -77,7 +77,7 @@ export class PhotoService {
     }
 
     try {
-      await this.qiniuService.deleteFile(key);
+      await this.qiniuService.delFile(key);
       this.logger.log(`七牛云文件删除成功: ${key}`);
     } catch (error) {
       this.logger.error(`七牛云文件删除失败: ${error.message}`);
@@ -92,8 +92,8 @@ export class PhotoService {
   /**
    * 批量创建照片
    */
-  async createBatch(createPhotoDtos: CreatePhotoDto[]) {
-    const photos = this.photoRepository.create(createPhotoDtos);
+  async createBatch(data: CreatePhotoDto[]) {
+    const photos = this.photoRepository.create(data);
     const results = await this.photoRepository.save(photos);
     this.logger.log(`批量创建照片成功，共 ${results.length} 张`);
     return results;

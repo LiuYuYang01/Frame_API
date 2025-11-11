@@ -13,14 +13,14 @@ export class PhotoController {
 
   @Post()
   @ApiOperation({ summary: '创建照片', description: '添加新的照片记录' })
-  async create(@Body() createPhotoDto: CreatePhotoDto) {
-    const photo = await this.photoService.create(createPhotoDto);
+  async createPhoto(@Body() data: CreatePhotoDto) {
+    const photo = await this.photoService.createPhoto(data);
     return Result.success('照片创建成功', photo);
   }
 
   @Get(':id')
   @ApiOperation({
-    summary: '查询照片详情',
+    summary: '获取照片详情',
     description: '根据照片ID查询详细信息',
   })
   @ApiParam({
@@ -29,9 +29,9 @@ export class PhotoController {
     example: 1,
     type: Number,
   })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const photo = await this.photoService.findOne(id);
-    return Result.success('查询照片详情成功', photo);
+  async getPhotoDetail(@Param('id', ParseIntPipe) id: number) {
+    const photo = await this.photoService.getPhotoDetail(id);
+    return Result.success('获取照片详情成功', photo);
   }
 
   @Patch(':id')
@@ -42,9 +42,9 @@ export class PhotoController {
     example: 1,
     type: Number,
   })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() updatePhotoDto: UpdatePhotoDto) {
-    const photo = await this.photoService.update(id, updatePhotoDto);
-    return Result.success('照片更新成功', photo);
+  async updatePhoto(@Param('id', ParseIntPipe) id: number, @Body() data: UpdatePhotoDto) {
+    await this.photoService.updatePhoto(id, data);
+    return Result.success('照片更新成功');
   }
 
   @Delete(':id')
@@ -58,8 +58,8 @@ export class PhotoController {
     example: 1,
     type: Number,
   })
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.photoService.remove(id);
-    return Result.success('照片删除成功', null);
+  async delPhoto(@Param('id', ParseIntPipe) id: number) {
+    await this.photoService.delPhoto(id);
+    return Result.success('照片删除成功');
   }
 }

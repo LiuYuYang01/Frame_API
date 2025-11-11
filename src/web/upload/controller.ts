@@ -74,7 +74,7 @@ export class FileController {
 
     // 验证相册是否存在
     try {
-      await this.albumService.findOne(albumIdNum);
+      await this.albumService.getAlbumDetail(albumIdNum);
     } catch (error) {
       throw new CustomException(400, `相册不存在：${error.message}`);
     }
@@ -132,7 +132,7 @@ export class FileController {
         imageInfo = await this.qiniuService.getImageInfo(url);
 
         // 创建照片记录
-        const photo = await this.photoService.create({
+        const photo = await this.photoService.createPhoto({
           name: fileHash,
           url: url,
           size: fileInfo.fsize,

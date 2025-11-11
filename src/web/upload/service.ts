@@ -89,7 +89,7 @@ export class QiniuService {
    * @param key 文件key
    * @returns Promise
    */
-  async deleteFile(key: string): Promise<void> {
+  async delFile(key: string): Promise<void> {
     return new Promise((resolve, reject) => {
       void this.bucketManager.delete(
         qiniuConfig.bucket,
