@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class QueryAlbumPhotosDto {
+export class PageQueryBaseDto {
   @ApiProperty({
     description: '页码',
     example: 1,

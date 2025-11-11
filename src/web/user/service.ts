@@ -34,10 +34,9 @@ export class UserService {
       throw new CustomException(401, '密码错误');
     }
 
-    // 生成 JWT token，有效期 3 天
-    const payload = { userId: user.id, username };
-    const token = this.jwtService.sign(payload, {
-      expiresIn: '3d', // 3 天有效期
+    // 生成 JWT token 并设置有效期 3 天
+    const token = this.jwtService.sign(user, {
+      expiresIn: '3d',
     });
 
     // 返回用户信息（不包含密码）

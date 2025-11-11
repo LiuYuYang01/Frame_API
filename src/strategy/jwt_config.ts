@@ -12,13 +12,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private userRepository: Repository<User>,
   ) {
     super({
+      // jwtFromRequest: 指定从哪里解析 JWT，这里使用 Authorization Bearer Token
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // ignoreExpiration: 是否忽略 JWT 的过期时间，false 代表不过期自动失效
       ignoreExpiration: false,
-      secretOrKey: 'liuyuyang1024', // 在生产环境中应该使用环境变量
+      // secretOrKey: 用于验证 JWT 签名的密钥
+      secretOrKey: 'liuyuyang1024',
     });
   }
 
-  // JWT 验证
+  // JWT 验证，如果验证失败就会触发这个方法
   async validate(payload: { userId: number }) {
     const { userId } = payload;
     const user = await this.userRepository.findOne({ where: { id: userId } });

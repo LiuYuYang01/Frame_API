@@ -21,7 +21,7 @@ export class AlbumService {
   /**
    * 查询相册列表（分页）
    */
-  async findAll(query: QueryAlbumDto) {
+  async getAlbumList(query: QueryAlbumDto) {
     const { page = 1, limit = 10, keyword } = query;
 
     const whereCondition = keyword ? { name: Like(`%${keyword}%`) } : {};
@@ -61,7 +61,7 @@ export class AlbumService {
   /**
    * 根据ID查询相册详情（不加载照片列表）
    */
-  async findOne(id: number) {
+  async getAlbumDetail(id: number) {
     const album = await this.albumRepository.findOne({
       where: { id },
     });
@@ -77,7 +77,7 @@ export class AlbumService {
    * 根据ID查询相册详情（包含照片数量）
    */
   async findOneWithCount(id: number) {
-    const album = await this.findOne(id);
+    const album = await this.getAlbumDetail(id);
 
     const count = await this.albumRepository.createQueryBuilder('album').leftJoin('album.photos', 'photo').where('album.id = :id', { id: album.id }).select('COUNT(photo.id)', 'count').getRawOne();
 
@@ -90,7 +90,7 @@ export class AlbumService {
   /**
    * 根据ID查询相册（包含照片关系，用于内部操作）
    */
-  private async findOneWithPhotos(id: number) {
+  private async getAlbumWithPhotos(id: number) {
     const album = await this.albumRepository.findOne({
       where: { id },
       relations: ['photos'],
@@ -106,10 +106,10 @@ export class AlbumService {
   /**
    * 更新相册
    */
-  async update(id: number, updateAlbumDto: UpdateAlbumDto) {
-    const album = await this.findOne(id);
+  async updateAlbum(id: number, data: UpdateAlbumDto) {
+    const album = await this.getAlbumDetail(id);
 
-    Object.assign(album, updateAlbumDto);
+    Object.assign(album, data);
     const result = await this.albumRepository.save(album);
 
     this.logger.log(`更新相册成功: ${result.id} - ${result.name}`);
@@ -121,8 +121,8 @@ export class AlbumService {
   /**
    * 删除相册
    */
-  async remove(id: number) {
-    const album = await this.findOne(id);
+  async delAlbum(id: number) {
+    const album = await this.getAlbumDetail(id);
 
     await this.albumRepository.remove(album);
     this.logger.log(`删除相册成功: ${id}`);
@@ -132,7 +132,7 @@ export class AlbumService {
    * 向相册添加照片
    */
   async addPhotos(albumId: number, photoIds: number[]) {
-    const album = await this.findOneWithPhotos(albumId);
+    const album = await this.getAlbumWithPhotos(albumId);
 
     // 查询要添加的照片
     const photosToAdd = await this.photoRepository.find({
@@ -156,8 +156,8 @@ export class AlbumService {
   /**
    * 从相册移除照片
    */
-  async removePhotos(albumId: number, photoIds: number[]) {
-    const album = await this.findOneWithPhotos(albumId);
+  async delPhotos(albumId: number, photoIds: number[]) {
+    const album = await this.getAlbumWithPhotos(albumId);
 
     // 过滤掉要移除的照片
     const photoIdsSet = new Set(photoIds);
@@ -172,7 +172,7 @@ export class AlbumService {
    */
   async getPhotosPaginated(albumId: number, page: number = 1, limit: number = 10) {
     // 先验证相册是否存在
-    await this.findOne(albumId);
+    await this.getAlbumDetail(albumId);
 
     // 使用 QueryBuilder 进行分页查询
     const query = this.photoRepository
