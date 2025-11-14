@@ -49,6 +49,7 @@ export class UserService {
         id: user.id,
         name: user.name,
         username: user.username,
+        avatar: user.avatar,
         create_time: user.create_time,
       },
     };

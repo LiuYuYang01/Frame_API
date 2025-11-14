@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@/entity/user';
+import { JWT_SECRET } from './jwt.constants';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -16,8 +17,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       // ignoreExpiration: 是否忽略 JWT 的过期时间，false 代表不过期自动失效
       ignoreExpiration: false,
-      // secretOrKey: 用于验证 JWT 签名的密钥
-      secretOrKey: 'liuyuyang1024',
+      // secretOrKey: 用于验证 JWT 签名的密钥（与生成 token 时使用的 secret 必须一致）
+      secretOrKey: JWT_SECRET,
     });
   }
 

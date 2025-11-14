@@ -6,15 +6,16 @@ import { UserController } from './controller';
 import { UserService } from './service';
 import { User } from '@/entity/user';
 import { JwtStrategy } from '@/strategy/jwt_config';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '@/strategy/jwt.constants';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: 'your-secret-key-change-in-production', // 在生产环境中应该使用环境变量
+      secret: JWT_SECRET, // 使用统一的 JWT 密钥配置（与 JwtStrategy 中的 secretOrKey 必须一致）
       signOptions: {
-        expiresIn: '3d', // 默认 3 天有效期
+        expiresIn: JWT_EXPIRES_IN, // 使用统一的过期时间配置
       },
     }),
   ],

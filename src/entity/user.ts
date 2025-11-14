@@ -14,6 +14,9 @@ export class User {
   @Column()
   password: string;
 
+  @Column()
+  avatar: string;
+
   @Column({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',

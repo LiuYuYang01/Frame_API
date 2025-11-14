@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsNumber, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class PageQueryBaseDto {
   @ApiProperty({
@@ -10,6 +10,13 @@ export class PageQueryBaseDto {
     default: 1,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) {
+      return 1;
+    }
+    const num = Number(value);
+    return isNaN(num) ? 1 : num;
+  })
   @Type(() => Number)
   @IsNumber()
   @Min(1)
@@ -22,6 +29,13 @@ export class PageQueryBaseDto {
     default: 10,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === '' || value === null || value === undefined) {
+      return 10;
+    }
+    const num = Number(value);
+    return isNaN(num) ? 10 : num;
+  })
   @Type(() => Number)
   @IsNumber()
   @Min(1)
