@@ -25,19 +25,22 @@ export class UserService {
     const user = await this.userRepository.findOne({ where: { username } });
 
     if (!user) {
-      throw new CustomException(401, '账号不存在');
+      throw new CustomException(400, '账号不存在');
     }
 
     // 验证密码
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new CustomException(401, '密码错误');
+      throw new CustomException(400, '密码错误');
     }
 
     // 生成 JWT token 并设置有效期 3 天
-    const token = this.jwtService.sign(user, {
-      expiresIn: '3d',
-    });
+    const token = this.jwtService.sign(
+      { user_id: user.id },
+      {
+        expiresIn: '3d',
+      },
+    );
 
     // 返回用户信息（不包含密码）
     return {

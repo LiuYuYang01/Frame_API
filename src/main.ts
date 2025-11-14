@@ -28,6 +28,11 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // 设置全局请求前缀（排除 api-docs 路径）
+  app.setGlobalPrefix('api', {
+    exclude: ['docs'],
+  });
+
   // Swagger 配置
   const config = new DocumentBuilder()
     .setTitle('NestJS API 文档')
@@ -55,7 +60,7 @@ async function bootstrap() {
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory, {
+  SwaggerModule.setup('docs', app, documentFactory, {
     swaggerOptions: {
       persistAuthorization: true, // 持久化授权
       docExpansion: 'none', // 默认折叠所有接口
@@ -69,7 +74,7 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
   console.log(`🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/api`);
+  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/docs`);
 }
 
 bootstrap().catch((err) => {

@@ -22,9 +22,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   // JWT 验证，如果验证失败就会触发这个方法
-  async validate(payload: { userId: number }) {
-    const { userId } = payload;
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+  async validate(payload: { user_id: number }) {
+    const { user_id } = payload;
+    const user = await this.userRepository.findOne({ where: { id: user_id } });
 
     if (!user) throw new UnauthorizedException('用户不存在');
 
