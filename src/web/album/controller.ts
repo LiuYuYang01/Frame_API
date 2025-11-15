@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { AlbumService } from './service';
+import { CreateAlbumDto } from './dto/create_album';
 import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
 import { ManagePhotosDto } from './dto/manage_photos';
@@ -13,6 +14,16 @@ import { PageQueryBaseDto } from '@/dto/page_query_base';
 @Controller('album')
 export class AlbumController {
   constructor(private readonly albumService: AlbumService) {}
+
+  @Post()
+  @ApiOperation({
+    summary: '创建相册',
+    description: '创建一个新的相册',
+  })
+  async createAlbum(@Body() data: CreateAlbumDto) {
+    const album = await this.albumService.createAlbum(data);
+    return Result.success('相册创建成功', album);
+  }
 
   @Patch(':id')
   @ApiOperation({
@@ -78,7 +89,7 @@ export class AlbumController {
     return Result.success('从相册移除照片成功');
   }
 
-  @Get(':id')
+  @Get('/detail/:id')
   @ApiOperation({
     summary: '获取相册详情',
     description: '根据相册ID获取详细信息',
@@ -100,6 +111,8 @@ export class AlbumController {
     description: '分页获取相册列表，支持按名称搜索',
   })
   async list(@Query() query: QueryAlbumDto) {
+    console.log(query, 333);
+
     const result = await this.albumService.getAlbumList(query);
 
     const pagingData = Paging.filter({

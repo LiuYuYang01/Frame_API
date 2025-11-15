@@ -18,8 +18,8 @@ export class PageQueryBaseDto {
     return isNaN(num) ? 1 : num;
   })
   @Type(() => Number)
-  @IsNumber()
-  @Min(1)
+  @IsNumber({}, { message: '页码必须是数字' })
+  @Min(1, { message: '页码必须大于等于1' })
   page?: number = 1;
 
   @ApiProperty({
@@ -37,7 +37,7 @@ export class PageQueryBaseDto {
     return isNaN(num) ? 10 : num;
   })
   @Type(() => Number)
-  @IsNumber()
-  @Min(1)
+  @IsNumber({}, { message: '每页数量必须是数字' })
+  @Min(1, { message: '每页数量必须大于等于1' })
   limit?: number = 10;
 }

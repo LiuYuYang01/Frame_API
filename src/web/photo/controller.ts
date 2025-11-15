@@ -18,7 +18,7 @@ export class PhotoController {
     return Result.success('照片创建成功', photo);
   }
 
-  @Get(':id')
+  @Get('/detail/:id')
   @ApiOperation({
     summary: '获取照片详情',
     description: '根据照片ID查询详细信息',

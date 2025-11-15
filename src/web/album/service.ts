@@ -5,6 +5,7 @@ import { Album } from '@/entity/album';
 import { Photo } from '@/entity/photo';
 import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
+import { CreateAlbumDto } from './dto/create_album';
 import { CustomException } from '@/execption/global_exception_handler';
 
 @Injectable()
@@ -56,6 +57,19 @@ export class AlbumService {
       page,
       limit,
     };
+  }
+
+  /**
+   * 创建相册
+   */
+  async createAlbum(data: CreateAlbumDto) {
+    const album = this.albumRepository.create(data);
+    const result = await this.albumRepository.save(album);
+
+    this.logger.log(`创建相册成功: ${result.id} - ${result.name}`);
+
+    // 返回带照片数量的结果
+    return this.findOneWithCount(result.id);
   }
 
   /**
