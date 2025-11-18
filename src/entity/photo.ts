@@ -9,16 +9,19 @@ export class Photo {
   @Column({ comment: '图片名称' })
   name: string;
 
+  @Column({ comment: '图片描述', nullable: true })
+  description?: string;
+
   @Column({ comment: '图片URL地址' })
   url: string;
 
   @Column({ comment: '文件大小（字节）' })
   size: number;
 
-  @Column({ nullable: true, comment: '图片宽度（像素）' })
+  @Column({ comment: '图片宽度（像素）', nullable: true })
   width: number;
 
-  @Column({ nullable: true, comment: '图片高度（像素）' })
+  @Column({ comment: '图片高度（像素）', nullable: true })
   height: number;
 
   @Column({ comment: '图片格式/MIME类型' })

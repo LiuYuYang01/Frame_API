@@ -10,4 +10,13 @@ export class UpdatePhotoDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiProperty({
+    description: '图片描述',
+    example: '美丽的日落',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
