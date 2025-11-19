@@ -208,4 +208,31 @@ export class AlbumService {
       limit,
     };
   }
+
+  /**
+   * 分页查询所有照片（排除指定相册）
+   */
+  async getPhotosExcludingAlbum(albumId: number, page: number = 1, limit: number = 10) {
+    // 确认相册存在
+    await this.getAlbumDetail(albumId);
+
+    const query = this.photoRepository
+      .createQueryBuilder('photo')
+      .leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId })
+      .where('albumFilter.id IS NULL')
+      .orderBy('photo.create_time', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await query.getManyAndCount();
+
+    this.logger.log(`查询排除相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
+  }
 }

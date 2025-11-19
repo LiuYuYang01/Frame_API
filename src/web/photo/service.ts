@@ -90,6 +90,21 @@ export class PhotoService {
   }
 
   /**
+   * 批量删除照片
+   */
+  async delPhotos(ids: number[]) {
+    if (!ids || ids.length === 0) {
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(ids));
+    for (const id of uniqueIds) {
+      await this.delPhoto(id);
+    }
+    this.logger.log(`批量删除照片成功，共 ${uniqueIds.length} 张`);
+  }
+
+  /**
    * 批量创建照片
    */
   async createBatch(data: CreatePhotoDto[]) {
@@ -97,6 +112,15 @@ export class PhotoService {
     const results = await this.photoRepository.save(photos);
     this.logger.log(`批量创建照片成功，共 ${results.length} 张`);
     return results;
+  }
+
+  /**
+   * 根据 URL 查询照片
+   */
+  async findByUrl(url: string) {
+    return this.photoRepository.findOne({
+      where: { url },
+    });
   }
 
   /**

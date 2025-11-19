@@ -148,4 +148,28 @@ export class AlbumController {
 
     return Result.success('查询相册照片成功', pagingData);
   }
+
+  @Get(':id/photos/exclude')
+  @ApiOperation({
+    summary: '查询除指定相册外的照片',
+    description: '分页查询所有照片，但排除指定相册中的照片，用于挑选未加入当前相册的内容',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '相册ID',
+    example: 1,
+    type: Number,
+  })
+  async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: PageQueryBaseDto) {
+    const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit);
+
+    const pagingData = Paging.filter({
+      items: result.items,
+      total: result.total,
+      page: result.page,
+      size: result.limit,
+    });
+
+    return Result.success('查询非当前相册照片成功', pagingData);
+  }
 }

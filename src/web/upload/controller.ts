@@ -105,20 +105,34 @@ export class FileController {
         // 计算文件哈希值（使用 MD5）
         const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
 
-        const tempFilePath = path.join(tempDir, file.originalname);
-        fs.writeFileSync(tempFilePath, file.buffer);
-
         // 使用哈希值作为文件名
         const ext = path.extname(file.originalname);
         const key = `${fileHash}${ext}`;
+        const url = this.qiniuService.getPublicDownloadUrl(key);
+
+        // 如果数据库已存在相同 URL，则直接复用
+        const existingPhoto = await this.photoService.findByUrl(url);
+        if (existingPhoto) {
+          this.logger.log(`文件已存在，跳过上传：${existingPhoto.id} - ${existingPhoto.url}`);
+          photos.push(existingPhoto);
+          continue;
+        }
+
+        const tempFilePath = path.join(tempDir, key);
+        fs.writeFileSync(tempFilePath, file.buffer);
 
         // 文件上传
-        const uploadResult = await this.qiniuService.uploadFile(tempFilePath, key);
-        fs.unlinkSync(tempFilePath);
+        let uploadResult: { hash: string; key: string };
+        try {
+          uploadResult = await this.qiniuService.uploadFile(tempFilePath, key);
+        } finally {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        }
 
         // 获取文件信息
         const fileInfo = await this.qiniuService.getFileInfo(uploadResult.key);
-        const url = this.qiniuService.getPublicDownloadUrl(uploadResult.key);
 
         // 获取图片尺寸信息
         let imageInfo: {

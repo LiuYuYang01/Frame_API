@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger'
 import { PhotoService } from './service';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
+import { DeletePhotoDto } from './dto/delete_photo';
 import { Result } from '@/utils/response';
 
 @ApiTags('照片管理')
@@ -47,19 +48,13 @@ export class PhotoController {
     return Result.success('照片更新成功');
   }
 
-  @Delete(':id')
+  @Delete()
   @ApiOperation({
-    summary: '删除照片',
-    description: '删除照片记录，同时会删除七牛云上对应的文件',
+    summary: '批量删除照片',
+    description: '根据ID列表删除照片记录，同时会删除七牛云上对应的文件',
   })
-  @ApiParam({
-    name: 'id',
-    description: '照片ID',
-    example: 1,
-    type: Number,
-  })
-  async delPhoto(@Param('id', ParseIntPipe) id: number) {
-    await this.photoService.delPhoto(id);
+  async delPhoto(@Body() data: DeletePhotoDto) {
+    await this.photoService.delPhotos(data.ids);
     return Result.success('照片删除成功');
   }
 }
