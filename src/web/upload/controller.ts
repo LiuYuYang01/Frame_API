@@ -56,7 +56,7 @@ export class FileController {
       },
     },
   })
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(FilesInterceptor('files', 20))
   async uploadFile(@UploadedFiles() files: Express.Multer.File[], @Body('albumId') albumId: string) {
     if (!files || files.length === 0) {
       throw new CustomException(400, '请至少上传一个文件');
@@ -95,68 +95,9 @@ export class FileController {
 
     try {
       const tempDir = path.join(process.cwd(), 'temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
+      await fs.promises.mkdir(tempDir, { recursive: true });
 
-      const photos: Photo[] = [];
-
-      for (const file of files) {
-        // 计算文件哈希值（使用 MD5）
-        const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
-
-        // 使用哈希值作为文件名
-        const ext = path.extname(file.originalname);
-        const key = `${fileHash}${ext}`;
-        const url = this.qiniuService.getPublicDownloadUrl(key);
-
-        // 如果数据库已存在相同 URL，则直接复用
-        const existingPhoto = await this.photoService.findByUrl(url);
-        if (existingPhoto) {
-          this.logger.log(`文件已存在，跳过上传：${existingPhoto.id} - ${existingPhoto.url}`);
-          photos.push(existingPhoto);
-          continue;
-        }
-
-        const tempFilePath = path.join(tempDir, key);
-        fs.writeFileSync(tempFilePath, file.buffer);
-
-        // 文件上传
-        let uploadResult: { hash: string; key: string };
-        try {
-          uploadResult = await this.qiniuService.uploadFile(tempFilePath, key);
-        } finally {
-          if (fs.existsSync(tempFilePath)) {
-            fs.unlinkSync(tempFilePath);
-          }
-        }
-
-        // 获取文件信息
-        const fileInfo = await this.qiniuService.getFileInfo(uploadResult.key);
-
-        // 获取图片尺寸信息
-        let imageInfo: {
-          width: number;
-          height: number;
-          format: string;
-          size: number;
-          colorModel: string;
-        } | null = null;
-
-        imageInfo = await this.qiniuService.getImageInfo(url);
-
-        // 创建照片记录
-        const photo = await this.photoService.createPhoto({
-          name: fileHash,
-          url: url,
-          size: fileInfo.fsize,
-          width: imageInfo?.width || 0,
-          height: imageInfo?.height || 0,
-          type: fileInfo.mimeType,
-        });
-
-        photos.push(photo);
-      }
+      const photos = await Promise.all(files.map((file) => this.processFile(file, tempDir)));
 
       // 将所有照片添加到指定相册
       const photoIds = photos.map((photo) => photo.id);
@@ -167,5 +108,49 @@ export class FileController {
       this.logger.error(`文件上传失败: ${error.message}`);
       throw new CustomException(500, `文件上传失败: ${error.message}`);
     }
+  }
+
+  private async processFile(file: Express.Multer.File, tempDir: string): Promise<Photo> {
+    // 计算文件哈希值（使用 MD5）
+    const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
+
+    // 使用哈希值作为文件名
+    const ext = path.extname(file.originalname);
+    const key = `${fileHash}${ext}`;
+    const url = this.qiniuService.getPublicDownloadUrl(key);
+
+    // 如果数据库已存在相同 URL，则直接复用
+    const existingPhoto = await this.photoService.findByUrl(url);
+    if (existingPhoto) {
+      this.logger.log(`文件已存在，跳过上传：${existingPhoto.id} - ${existingPhoto.url}`);
+      return existingPhoto;
+    }
+
+    const tempFilePath = path.join(tempDir, key);
+    await fs.promises.writeFile(tempFilePath, file.buffer);
+
+    // 文件上传
+    let uploadResult: { hash: string; key: string };
+    try {
+      uploadResult = await this.qiniuService.uploadFile(tempFilePath, key);
+    } finally {
+      await fs.promises.unlink(tempFilePath).catch(() => undefined);
+    }
+
+    // 获取文件信息
+    const fileInfo = await this.qiniuService.getFileInfo(uploadResult.key);
+
+    // 获取图片尺寸信息
+    const imageInfo = await this.qiniuService.getImageInfo(url);
+
+    // 创建照片记录
+    return this.photoService.createPhoto({
+      name: fileHash,
+      url: url,
+      size: fileInfo.fsize,
+      width: imageInfo?.width || 0,
+      height: imageInfo?.height || 0,
+      type: fileInfo.mimeType,
+    });
   }
 }
