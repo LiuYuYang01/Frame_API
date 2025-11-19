@@ -111,8 +111,6 @@ export class AlbumController {
     description: '分页获取相册列表，支持按名称搜索',
   })
   async list(@Query() query: QueryAlbumDto) {
-    console.log(query, 333);
-
     const result = await this.albumService.getAlbumList(query);
 
     const pagingData = Paging.filter({
@@ -151,8 +149,8 @@ export class AlbumController {
 
   @Get(':id/photos/exclude')
   @ApiOperation({
-    summary: '查询除指定相册外的照片',
-    description: '分页查询所有照片，但排除指定相册中的照片，用于挑选未加入当前相册的内容',
+    summary: '查询未绑定的照片',
+    description: '分页查询所有未绑定的照片，用于挑选未加入当前相册的内容',
   })
   @ApiParam({
     name: 'id',
@@ -160,8 +158,8 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: PageQueryBaseDto) {
-    const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit);
+  async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: QueryAlbumDto) {
+    const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit, query.keyword);
 
     const pagingData = Paging.filter({
       items: result.items,
@@ -170,6 +168,6 @@ export class AlbumController {
       size: result.limit,
     });
 
-    return Result.success('查询非当前相册照片成功', pagingData);
+    return Result.success('查询未绑定的照片成功', pagingData);
   }
 }

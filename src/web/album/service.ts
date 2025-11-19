@@ -212,21 +212,25 @@ export class AlbumService {
   /**
    * 分页查询所有照片（排除指定相册）
    */
-  async getPhotosExcludingAlbum(albumId: number, page: number = 1, limit: number = 10) {
+  async getPhotosExcludingAlbum(albumId: number, page: number = 1, limit: number = 10, keyword?: string) {
     // 确认相册存在
     await this.getAlbumDetail(albumId);
 
-    const query = this.photoRepository
-      .createQueryBuilder('photo')
-      .leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId })
-      .where('albumFilter.id IS NULL')
+    const query = this.photoRepository.createQueryBuilder('photo').leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId }).where('albumFilter.id IS NULL');
+
+    // 如果有关键词，添加名称搜索条件
+    if (keyword) {
+      query.andWhere('photo.name LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    query
       .orderBy('photo.create_time', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(`查询排除相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`);
+    this.logger.log(`查询排除相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`);
 
     return {
       items,
