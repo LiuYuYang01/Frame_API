@@ -53,7 +53,7 @@ async function bootstrap() {
       },
       'JWT-auth',
     )
-    .addServer('http://localhost:3000', '开发环境')
+    .addServer('http://localhost:6666', '开发环境')
     .addServer('https://api.example.com', '生产环境')
     .setContact('技术支持', 'https://github.com/your-repo', 'support@example.com')
     .setLicense('MIT', 'https://opensource.org/licenses/MIT')
@@ -72,9 +72,9 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }', // 隐藏顶部栏
   });
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/docs`);
+  await app.listen(process.env.PORT ?? 6666);
+  console.log(`🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 6666}`);
+  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 6666}/docs`);
 }
 
 bootstrap().catch((err) => {
