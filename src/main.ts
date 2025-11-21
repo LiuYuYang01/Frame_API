@@ -72,9 +72,9 @@ async function bootstrap() {
     customCss: '.swagger-ui .topbar { display: none }', // 隐藏顶部栏
   });
 
-  await app.listen(process.env.PORT ?? 6666);
-  console.log(`🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 6666}`);
-  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 6666}/docs`);
+  await app.listen(process.env.PORT ?? 3000);
+  console.log(`🚀 应用程序正在运行: http://localhost:${process.env.PORT ?? 3000}`);
+  console.log(`📚 API 文档地址: http://localhost:${process.env.PORT ?? 3000}/docs`);
 }
 
 bootstrap().catch((err) => {

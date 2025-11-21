@@ -7,7 +7,8 @@ import { QueryAlbumDto } from './dto/query_album';
 import { ManagePhotosDto } from './dto/manage_photos';
 import { Result } from '@/utils/response';
 import { Paging } from '@/utils/paging';
-import { PageQueryBaseDto } from '@/dto/page_query_base';
+import { AlbumPhotoQueryDto } from './dto/album_photo_query';
+import { applyImageView2ToPhotos } from '@/utils/image';
 
 @ApiTags('相册管理')
 @ApiBearerAuth('JWT-auth')
@@ -134,11 +135,12 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async getPhotos(@Param('id', ParseIntPipe) id: number, @Query() query: PageQueryBaseDto) {
+  async getPhotos(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
     const result = await this.albumService.getPhotosPaginated(id, query.page, query.limit);
+    const items = applyImageView2ToPhotos(result.items, query.width, query.height);
 
     const pagingData = Paging.filter({
-      items: result.items,
+      items,
       total: result.total,
       page: result.page,
       size: result.limit,
@@ -158,11 +160,12 @@ export class AlbumController {
     example: 1,
     type: Number,
   })
-  async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: QueryAlbumDto) {
+  async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
     const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit, query.keyword);
+    const items = applyImageView2ToPhotos(result.items, query.width, query.height);
 
     const pagingData = Paging.filter({
-      items: result.items,
+      items,
       total: result.total,
       page: result.page,
       size: result.limit,

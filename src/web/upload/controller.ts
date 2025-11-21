@@ -56,7 +56,7 @@ export class FileController {
       },
     },
   })
-  @UseInterceptors(FilesInterceptor('files', 20))
+  @UseInterceptors(FilesInterceptor('files', 10))
   async uploadFile(@UploadedFiles() files: Express.Multer.File[], @Body('albumId') albumId: string) {
     if (!files || files.length === 0) {
       throw new CustomException(400, '请至少上传一个文件');
@@ -93,24 +93,51 @@ export class FileController {
       }
     }
 
+    const tempDir = path.join(process.cwd(), 'temp');
+    await fs.promises.mkdir(tempDir, { recursive: true });
+
+    // 记录成功上传的文件信息，用于回滚（只记录新上传的文件）
+    const uploadedFiles: Array<{ key: string; photoId: number }> = [];
+    const photos: Photo[] = [];
+
+    // 将所有照片添加到指定相册
     try {
-      const tempDir = path.join(process.cwd(), 'temp');
-      await fs.promises.mkdir(tempDir, { recursive: true });
+      // 逐个处理文件，而不是并发处理
+      for (const file of files) {
+        const result = await this.processFile(file, tempDir);
+        photos.push(result.photo);
 
-      const photos = await Promise.all(files.map((file) => this.processFile(file, tempDir)));
+        // 只记录新上传的文件（需要回滚的）
+        if (result.isNew) {
+          // 从 URL 中提取 key
+          const url = new URL(result.photo.url);
+          const key = url.pathname.substring(1);
+          uploadedFiles.push({
+            key,
+            photoId: result.photo.id,
+          });
+        }
+      }
 
-      // 将所有照片添加到指定相册
+      // 所有文件上传成功后，将照片添加到相册
       const photoIds = photos.map((photo) => photo.id);
       await this.albumService.addPhotos(albumIdNum, photoIds);
 
       return Result.success('上传成功', photos);
     } catch (error) {
       this.logger.error(`文件上传失败: ${error.message}`);
+
+      // 回滚：删除所有已上传的文件和数据库记录
+      if (uploadedFiles.length > 0) {
+        this.logger.warn(`开始回滚，删除 ${uploadedFiles.length} 个已上传的文件`);
+        await this.rollbackUploads(uploadedFiles);
+      }
+
       throw new CustomException(500, `文件上传失败: ${error.message}`);
     }
   }
 
-  private async processFile(file: Express.Multer.File, tempDir: string): Promise<Photo> {
+  private async processFile(file: Express.Multer.File, tempDir: string): Promise<{ photo: Photo; isNew: boolean }> {
     // 计算文件哈希值（使用 MD5）
     const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
 
@@ -123,7 +150,7 @@ export class FileController {
     const existingPhoto = await this.photoService.findByUrl(url);
     if (existingPhoto) {
       this.logger.log(`文件已存在，跳过上传：${existingPhoto.id} - ${existingPhoto.url}`);
-      return existingPhoto;
+      return { photo: existingPhoto, isNew: false };
     }
 
     const tempFilePath = path.join(tempDir, key);
@@ -144,7 +171,7 @@ export class FileController {
     const imageInfo = await this.qiniuService.getImageInfo(url);
 
     // 创建照片记录
-    return this.photoService.createPhoto({
+    const photo = await this.photoService.createPhoto({
       name: fileHash,
       url: url,
       size: fileInfo.fsize,
@@ -152,5 +179,34 @@ export class FileController {
       height: imageInfo?.height || 0,
       type: fileInfo.mimeType,
     });
+
+    return { photo, isNew: true };
+  }
+
+  /**
+   * 回滚上传操作：删除已上传的文件和数据库记录
+   */
+  private async rollbackUploads(uploadedFiles: Array<{ key: string; photoId: number }>) {
+    // 并发执行所有回滚操作（即使部分失败也要继续）
+    const rollbackPromises = uploadedFiles.map(async ({ key, photoId }) => {
+      try {
+        // 删除七牛云文件
+        await this.qiniuService.delFile(key);
+        this.logger.log(`回滚：七牛云文件删除成功: ${key}`);
+      } catch (error) {
+        this.logger.error(`回滚：七牛云文件删除失败 ${key}: ${error.message}`);
+      }
+
+      try {
+        // 删除数据库记录（使用 repository 直接删除，避免再次删除七牛云文件）
+        await this.photoService.deletePhotoDirectly(photoId);
+        this.logger.log(`回滚：数据库记录删除成功: ${photoId}`);
+      } catch (error) {
+        this.logger.error(`回滚：数据库记录删除失败 ${photoId}: ${error.message}`);
+      }
+    });
+
+    await Promise.allSettled(rollbackPromises);
+    this.logger.warn(`回滚完成，共处理 ${uploadedFiles.length} 个文件`);
   }
 }

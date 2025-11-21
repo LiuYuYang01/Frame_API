@@ -136,4 +136,22 @@ export class PhotoService {
     });
     return photos;
   }
+
+  /**
+   * 直接删除数据库记录（不删除七牛云文件）
+   * 用于回滚操作，避免重复删除七牛云文件
+   */
+  async deletePhotoDirectly(id: number) {
+    const photo = await this.photoRepository.findOne({
+      where: { id },
+    });
+
+    if (!photo) {
+      this.logger.warn(`照片 ID ${id} 不存在，跳过删除`);
+      return;
+    }
+
+    await this.photoRepository.remove(photo);
+    this.logger.log(`直接删除照片记录成功: ${id}`);
+  }
 }
