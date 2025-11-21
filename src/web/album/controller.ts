@@ -9,6 +9,7 @@ import { Result } from '@/utils/response';
 import { Paging } from '@/utils/paging';
 import { AlbumPhotoQueryDto } from './dto/album_photo_query';
 import { applyImageView2ToPhotos } from '@/utils/image';
+import { Public } from '@/decorator/public';
 
 @ApiTags('相册管理')
 @ApiBearerAuth('JWT-auth')
@@ -91,6 +92,7 @@ export class AlbumController {
   }
 
   @Get('/detail/:id')
+  @Public()
   @ApiOperation({
     summary: '获取相册详情',
     description: '根据相册ID获取详细信息',
@@ -107,6 +109,7 @@ export class AlbumController {
   }
 
   @Get('/list')
+  @Public()
   @ApiOperation({
     summary: '获取相册列表',
     description: '分页获取相册列表，支持按名称搜索',
@@ -125,6 +128,7 @@ export class AlbumController {
   }
 
   @Get(':id/photos')
+  @Public()
   @ApiOperation({
     summary: '分页查询相册中的照片',
     description: '分页查询指定相册中的所有照片',

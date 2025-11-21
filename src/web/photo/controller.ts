@@ -5,6 +5,7 @@ import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
 import { DeletePhotoDto } from './dto/delete_photo';
 import { Result } from '@/utils/response';
+import { Public } from '@/decorator/public';
 
 @ApiTags('照片管理')
 @ApiBearerAuth('JWT-auth')
@@ -20,6 +21,7 @@ export class PhotoController {
   }
 
   @Get('/detail/:id')
+  @Public()
   @ApiOperation({
     summary: '获取照片详情',
     description: '根据照片ID查询详细信息',
