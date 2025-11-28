@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseInterceptors, UploadedFiles, Logger } from '@nestjs/common';
+import { Controller, Post, Body, UseInterceptors, UploadedFiles, Logger, Get, Delete, Query } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { QiniuService } from './service';
@@ -7,6 +7,7 @@ import { AlbumService } from '@/web/album/service';
 import { Result } from '@/utils/response';
 import { Photo } from '@/entity/photo';
 import { CustomException } from '@/execption/global_exception_handler';
+import { CheckInstantUploadDto } from './dto/chunk_upload.dto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -178,6 +179,7 @@ export class FileController {
       width: imageInfo?.width || 0,
       height: imageInfo?.height || 0,
       type: fileInfo.mimeType,
+      hash: uploadResult.hash,
     });
 
     return { photo, isNew: true };
@@ -208,5 +210,138 @@ export class FileController {
 
     await Promise.allSettled(rollbackPromises);
     this.logger.warn(`回滚完成，共处理 ${uploadedFiles.length} 个文件`);
+  }
+
+  /**
+   * 秒传检查：通过文件hash检查是否已存在
+   */
+  @Post('check_instant_upload')
+  @ApiOperation({
+    summary: '秒传检查',
+    description: '通过文件hash检查文件是否已存在，如果存在则直接返回照片信息，无需上传',
+  })
+  async checkInstantUpload(@Body() dto: CheckInstantUploadDto) {
+    const existingPhoto = await this.photoService.findByHash(dto.hash);
+    if (existingPhoto) {
+      this.logger.log(`文件已存在（秒传）：${existingPhoto.id} - ${existingPhoto.url}`);
+      return Result.success('文件已存在，可直接使用', existingPhoto);
+    }
+    return Result.success('文件不存在，需要上传', null);
+  }
+
+  /**
+   * 分片上传
+   */
+  @Post('chunk_upload')
+  @ApiOperation({
+    summary: '分片上传',
+    description: '上传文件分片，支持断点续传。当所有分片上传完成后自动合并并上传到七牛云',
+  })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FilesInterceptor('chunk', 1))
+  async chunkUpload(@UploadedFiles() files: Express.Multer.File[], @Body('uploadId') uploadId: string, @Body('chunkIndex') chunkIndex: string, @Body('totalChunks') totalChunks: string, @Body('fileSize') fileSize: string, @Body('fileName') fileName: string, @Body('key') key?: string, @Body('hash') hash?: string, @Body('albumId') albumId?: string) {
+    if (!files || files.length === 0) {
+      throw new CustomException(400, '请上传分片文件');
+    }
+
+    const chunk = files[0];
+    const chunkBuffer = chunk.buffer;
+
+    const uploadIdValue = uploadId;
+    const chunkIndexValue = parseInt(chunkIndex, 10);
+    const totalChunksValue = parseInt(totalChunks, 10);
+    const fileSizeValue = parseInt(fileSize, 10);
+
+    if (isNaN(chunkIndexValue) || isNaN(totalChunksValue) || isNaN(fileSizeValue)) {
+      throw new CustomException(400, '参数格式不正确');
+    }
+
+    // 上传分片
+    const result = await this.qiniuService.uploadChunk(chunkBuffer, uploadIdValue, chunkIndexValue, totalChunksValue, key || '', fileSizeValue);
+
+    // 如果上传完成，创建照片记录
+    if (result.completed && result.key && result.hash) {
+      const ext = path.extname(fileName);
+      const finalKey = key || result.key;
+      const url = this.qiniuService.getPublicDownloadUrl(finalKey);
+
+      // 检查是否已存在（通过hash）
+      let photo: Photo;
+      const existingPhoto = await this.photoService.findByHash(result.hash);
+      if (existingPhoto) {
+        this.logger.log(`文件已存在（秒传）：${existingPhoto.id} - ${existingPhoto.url}`);
+        photo = existingPhoto;
+      } else {
+        // 获取文件信息
+        const fileInfo = await this.qiniuService.getFileInfo(finalKey);
+        const imageInfo = await this.qiniuService.getImageInfo(url);
+
+        // 创建照片记录
+        photo = await this.photoService.createPhoto({
+          name: fileName.replace(ext, ''),
+          url: url,
+          size: fileInfo.fsize,
+          width: imageInfo?.width || 0,
+          height: imageInfo?.height || 0,
+          type: fileInfo.mimeType,
+          hash: result.hash,
+        });
+      }
+
+      // 如果指定了相册，添加到相册
+      if (albumId) {
+        const albumIdNum = parseInt(albumId, 10);
+        if (!isNaN(albumIdNum)) {
+          try {
+            await this.albumService.addPhotos(albumIdNum, [photo.id]);
+          } catch (error) {
+            this.logger.warn(`添加到相册失败: ${error.message}`);
+          }
+        }
+      }
+
+      return Result.success('分片上传完成', {
+        ...result,
+        photo,
+      });
+    }
+
+    return Result.success('分片上传成功', result);
+  }
+
+  /**
+   * 获取上传进度
+   */
+  @Get('upload-progress')
+  @ApiOperation({
+    summary: '获取上传进度',
+    description: '根据上传ID获取已上传的分片索引，用于断点续传',
+  })
+  async getUploadProgress(@Query('uploadId') uploadId: string) {
+    if (!uploadId) {
+      throw new CustomException(400, 'uploadId 参数必填');
+    }
+    const uploadedChunks = await this.qiniuService.getUploadProgress(uploadId);
+    return Result.success('获取上传进度成功', {
+      uploadId,
+      uploadedChunks,
+      progress: uploadedChunks.length,
+    });
+  }
+
+  /**
+   * 取消上传
+   */
+  @Delete('cancel_upload')
+  @ApiOperation({
+    summary: '取消上传',
+    description: '取消上传并清理临时文件',
+  })
+  async cancelUpload(@Query('uploadId') uploadId: string) {
+    if (!uploadId) {
+      throw new CustomException(400, 'uploadId 参数必填');
+    }
+    await this.qiniuService.cancelUpload(uploadId);
+    return Result.success('已取消上传');
   }
 }

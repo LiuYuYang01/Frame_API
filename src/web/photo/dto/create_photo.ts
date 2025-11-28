@@ -44,4 +44,13 @@ export class CreatePhotoDto {
   })
   @IsString()
   type: string;
+
+  @ApiProperty({
+    description: '文件哈希值（用于秒传）',
+    example: 'Fp8xqN2K8k-0Wh8Lv00YV3x9o2T1',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  hash?: string;
 }

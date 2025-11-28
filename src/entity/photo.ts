@@ -27,6 +27,9 @@ export class Photo {
   @Column({ comment: '图片格式/MIME类型' })
   type: string;
 
+  @Column({ comment: '文件哈希值（用于秒传）', nullable: true })
+  hash?: string;
+
   @Column({
     type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
