@@ -1,23 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as qiniu from 'qiniu';
-import { qiniuConfig } from './config';
+import { createQiniuConfig, QiniuConfig } from './config';
 import * as path from 'path';
 import * as fs from 'fs';
 
 @Injectable()
 export class QiniuService {
   private readonly logger = new Logger(QiniuService.name);
+  private readonly qiniuConfig: QiniuConfig;
   private mac: qiniu.auth.digest.Mac;
   private config: qiniu.conf.Config;
   private bucketManager: qiniu.rs.BucketManager;
 
-  constructor() {
-    // 初始化七牛云配置
-    this.mac = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
+  constructor(private readonly configService: ConfigService) {
+    // 从环境变量初始化七牛云配置
+    this.qiniuConfig = createQiniuConfig(this.configService);
+    this.mac = new qiniu.auth.digest.Mac(this.qiniuConfig.accessKey, this.qiniuConfig.secretKey);
 
     this.config = new qiniu.conf.Config();
     // 根据配置设置区域
-    // this.config.zone = qiniu.zone[qiniuConfig.zone];
+    // this.config.zone = qiniu.zone[this.qiniuConfig.zone];
 
     this.bucketManager = new qiniu.rs.BucketManager(this.mac, this.config);
   }
@@ -29,7 +32,7 @@ export class QiniuService {
    */
   getUploadToken(key?: string): string {
     const options = {
-      scope: key ? `${qiniuConfig.bucket}:${key}` : qiniuConfig.bucket,
+      scope: key ? `${this.qiniuConfig.bucket}:${key}` : this.qiniuConfig.bucket,
       expires: 3600, // 1小时过期
     };
 
@@ -93,7 +96,7 @@ export class QiniuService {
   async delFile(key: string): Promise<void> {
     return new Promise((resolve, reject) => {
       void this.bucketManager.delete(
-        qiniuConfig.bucket,
+        this.qiniuConfig.bucket,
         key,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (err: Error | undefined, respBody: any, respInfo: any) => {
@@ -130,7 +133,7 @@ export class QiniuService {
   }> {
     return new Promise((resolve, reject) => {
       void this.bucketManager.stat(
-        qiniuConfig.bucket,
+        this.qiniuConfig.bucket,
         key,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (err: Error | undefined, respBody: any, respInfo: any) => {
@@ -160,7 +163,7 @@ export class QiniuService {
    * @returns 访问链接
    */
   getPublicDownloadUrl(key: string): string {
-    return `${qiniuConfig.domain}/${key}`;
+    return `${this.qiniuConfig.domain}/${key}`;
   }
 
   /**

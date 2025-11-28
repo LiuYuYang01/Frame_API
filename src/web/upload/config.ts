@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+
 export interface QiniuConfig {
   accessKey: string;
   secretKey: string;
@@ -6,10 +8,40 @@ export interface QiniuConfig {
   zone: string;
 }
 
-export const qiniuConfig: QiniuConfig = {
-  accessKey: process.env.QINIU_ACCESS_KEY || 'ga4bLt2LD1T-hP6sqf3QG3N9bSwfYWwP-fVcv9n6',
-  secretKey: process.env.QINIU_SECRET_KEY || '-1yPaVCWQP1P5SjwmITo5yMWe2LEp_6ohpxsRp8z',
-  bucket: process.env.QINIU_BUCKET || 'liuyuyang',
-  domain: process.env.QINIU_DOMAIN || 'http://store.liuyuyang.net',
-  zone: process.env.QINIU_ZONE || 'Zone_z2',
-};
+/**
+ * 从环境变量创建七牛云配置
+ * @param configService ConfigService 实例
+ * @returns QiniuConfig 配置对象
+ * @throws Error 如果必需的环境变量未设置
+ */
+export function createQiniuConfig(configService: ConfigService): QiniuConfig {
+  const accessKey = configService.get<string>('QINIU_ACCESS_KEY');
+  const secretKey = configService.get<string>('QINIU_SECRET_KEY');
+  const bucket = configService.get<string>('QINIU_BUCKET');
+  const domain = configService.get<string>('QINIU_DOMAIN');
+  const zone = configService.get<string>('QINIU_ZONE');
+
+  if (!accessKey) {
+    throw new Error('环境变量 QINIU_ACCESS_KEY 未设置');
+  }
+  if (!secretKey) {
+    throw new Error('环境变量 QINIU_SECRET_KEY 未设置');
+  }
+  if (!bucket) {
+    throw new Error('环境变量 QINIU_BUCKET 未设置');
+  }
+  if (!domain) {
+    throw new Error('环境变量 QINIU_DOMAIN 未设置');
+  }
+  if (!zone) {
+    throw new Error('环境变量 QINIU_ZONE 未设置');
+  }
+
+  return {
+    accessKey,
+    secretKey,
+    bucket,
+    domain,
+    zone,
+  };
+}
