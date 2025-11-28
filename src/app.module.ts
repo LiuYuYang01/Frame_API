@@ -17,10 +17,7 @@ import { JwtAuthGuard } from '@/guard/jwt_auth';
     // 配置 ConfigModule 以加载环境变量文件
     ConfigModule.forRoot({
       // 根据 NODE_ENV 加载对应的 .env 文件
-      envFilePath: [
-        `.env.${process.env.NODE_ENV || 'development'}`,
-        '.env',
-      ],
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
       isGlobal: true, // 全局可用，其他模块无需再次导入
     }),
     // 使用 forRootAsync 以便注入 ConfigService
@@ -33,9 +30,9 @@ import { JwtAuthGuard } from '@/guard/jwt_auth';
         username: configService.get<string>('DB_USERNAME', 'ThriveX_Phone'),
         password: configService.get<string>('DB_PASSWORD', ''),
         database: configService.get<string>('DB_DATABASE', 'ThriveX_Phone'),
-        entities: [User, Photo, Album],
         synchronize: configService.get<string>('NODE_ENV') !== 'production', // 生产环境关闭
         logging: configService.get<string>('NODE_ENV') === 'development', // 仅开发环境显示SQL日志
+        entities: [User, Photo, Album],
       }),
       inject: [ConfigService],
     }),
