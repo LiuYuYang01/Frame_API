@@ -183,8 +183,29 @@ export class AlbumService {
 
   /**
    * 分页查询相册中的照片
+   * @param albumId 相册ID，为0时表示查询所有照片
    */
   async getPhotosPaginated(albumId: number, page: number = 1, limit: number = 10) {
+    // 如果 albumId 为 0，查询所有照片
+    if (albumId === 0) {
+      const query = this.photoRepository
+        .createQueryBuilder('photo')
+        .orderBy('photo.create_time', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      const [items, total] = await query.getManyAndCount();
+
+      this.logger.log(`查询所有照片成功，共 ${total} 张，当前第 ${page} 页`);
+
+      return {
+        items,
+        total,
+        page,
+        limit,
+      };
+    }
+
     // 先验证相册是否存在
     await this.getAlbumDetail(albumId);
 

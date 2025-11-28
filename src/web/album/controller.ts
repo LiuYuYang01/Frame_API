@@ -131,11 +131,11 @@ export class AlbumController {
   @Public()
   @ApiOperation({
     summary: '分页查询相册中的照片',
-    description: '分页查询指定相册中的所有照片',
+    description: '分页查询指定相册中的所有照片，当id为0时查询所有照片',
   })
   @ApiParam({
     name: 'id',
-    description: '相册ID',
+    description: '相册ID，为0时表示查询所有照片',
     example: 1,
     type: Number,
   })
