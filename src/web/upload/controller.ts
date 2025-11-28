@@ -7,7 +7,6 @@ import { AlbumService } from '@/web/album/service';
 import { Result } from '@/utils/response';
 import { Photo } from '@/entity/photo';
 import { CustomException } from '@/execption/global_exception_handler';
-import { CheckInstantUploadDto } from './dto/chunk_upload.dto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -172,6 +171,7 @@ export class FileController {
     const imageInfo = await this.qiniuService.getImageInfo(url);
 
     // 创建照片记录
+    // 注意：使用 fileHash（MD5）而不是 uploadResult.hash（七牛云etag），确保秒传时能正确匹配
     const photo = await this.photoService.createPhoto({
       name: fileHash,
       url: url,
@@ -179,7 +179,7 @@ export class FileController {
       width: imageInfo?.width || 0,
       height: imageInfo?.height || 0,
       type: fileInfo.mimeType,
-      hash: uploadResult.hash,
+      hash: fileHash, // 使用 MD5 hash，与客户端计算的一致
     });
 
     return { photo, isNew: true };
@@ -210,23 +210,6 @@ export class FileController {
 
     await Promise.allSettled(rollbackPromises);
     this.logger.warn(`回滚完成，共处理 ${uploadedFiles.length} 个文件`);
-  }
-
-  /**
-   * 秒传检查：通过文件hash检查是否已存在
-   */
-  @Post('check_instant_upload')
-  @ApiOperation({
-    summary: '秒传检查',
-    description: '通过文件hash检查文件是否已存在，如果存在则直接返回照片信息，无需上传',
-  })
-  async checkInstantUpload(@Body() dto: CheckInstantUploadDto) {
-    const existingPhoto = await this.photoService.findByHash(dto.hash);
-    if (existingPhoto) {
-      this.logger.log(`文件已存在（秒传）：${existingPhoto.id} - ${existingPhoto.url}`);
-      return Result.success('文件已存在，可直接使用', existingPhoto);
-    }
-    return Result.success('文件不存在，需要上传', null);
   }
 
   /**
@@ -265,18 +248,23 @@ export class FileController {
       const finalKey = key || result.key;
       const url = this.qiniuService.getPublicDownloadUrl(finalKey);
 
-      // 检查是否已存在（通过hash）
-      let photo: Photo;
-      const existingPhoto = await this.photoService.findByHash(result.hash);
-      if (existingPhoto) {
-        this.logger.log(`文件已存在（秒传）：${existingPhoto.id} - ${existingPhoto.url}`);
-        photo = existingPhoto;
-      } else {
+      // 检查是否已存在（使用客户端传入的hash进行秒传检查）
+      let photo: Photo | undefined;
+      if (hash) {
+        const existingPhoto = await this.photoService.findByHash(hash);
+        if (existingPhoto) {
+          this.logger.log(`文件已存在（秒传）：${existingPhoto.id} - ${existingPhoto.url}`);
+          photo = existingPhoto;
+        }
+      }
+
+      // 如果不存在，创建新记录
+      if (!photo) {
         // 获取文件信息
         const fileInfo = await this.qiniuService.getFileInfo(finalKey);
         const imageInfo = await this.qiniuService.getImageInfo(url);
 
-        // 创建照片记录
+        // 创建照片记录，使用客户端传入的hash（SHA256）
         photo = await this.photoService.createPhoto({
           name: fileName.replace(ext, ''),
           url: url,
@@ -284,7 +272,7 @@ export class FileController {
           width: imageInfo?.width || 0,
           height: imageInfo?.height || 0,
           type: fileInfo.mimeType,
-          hash: result.hash,
+          hash, // 使用客户端传入的 SHA256 hash
         });
       }
 
