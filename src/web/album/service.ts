@@ -190,7 +190,7 @@ export class AlbumService {
     if (albumId === 0) {
       const query = this.photoRepository
         .createQueryBuilder('photo')
-        .orderBy('photo.create_time', 'DESC')
+        .orderBy('RAND()')
         .skip((page - 1) * limit)
         .take(limit);
 
@@ -214,7 +214,7 @@ export class AlbumService {
       .createQueryBuilder('photo')
       .innerJoin('photo.albums', 'album')
       .where('album.id = :albumId', { albumId })
-      .orderBy('photo.create_time', 'DESC')
+      .orderBy('RAND()')
       .skip((page - 1) * limit)
       .take(limit);
 

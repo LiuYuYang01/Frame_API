@@ -91,23 +91,6 @@ export class AlbumController {
     return Result.success('从相册移除照片成功');
   }
 
-  @Get('/detail/:id')
-  @Public()
-  @ApiOperation({
-    summary: '获取相册详情',
-    description: '根据相册ID获取详细信息',
-  })
-  @ApiParam({
-    name: 'id',
-    description: '相册ID',
-    example: 1,
-    type: Number,
-  })
-  async detail(@Param('id', ParseIntPipe) id: number) {
-    const album = await this.albumService.findOneWithCount(id);
-    return Result.success('获取相册详情成功', album);
-  }
-
   @Get('/list')
   @Public()
   @ApiOperation({
