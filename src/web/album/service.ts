@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, In } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Album } from '@/entity/album';
 import { Photo } from '@/entity/photo';
 import { UpdateAlbumDto } from './dto/update_album';
@@ -25,17 +25,19 @@ export class AlbumService {
   async getAlbumList(query: QueryAlbumDto) {
     const { page = 1, limit = 10, keyword } = query;
 
-    const whereCondition = keyword ? { name: Like(`%${keyword}%`) } : {};
+    // 使用 QueryBuilder 进行分页查询，支持随机排序
+    const queryBuilder = this.albumRepository
+      .createQueryBuilder('album')
+      .orderBy('RAND()')
+      .skip((page - 1) * limit)
+      .take(limit);
 
-    const [items, total] = await this.albumRepository.findAndCount({
-      where: whereCondition,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: {
-        create_time: 'DESC',
-      },
-      // 不加载photos关系，提升性能
-    });
+    // 如果有关键词，添加名称搜索条件
+    if (keyword) {
+      queryBuilder.where('album.name LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    const [items, total] = await queryBuilder.getManyAndCount();
 
     // 为每个相册查询照片数量
     const itemsWithCount = await Promise.all(
