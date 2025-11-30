@@ -20,15 +20,57 @@ export class AlbumService {
   ) {}
 
   /**
-   * 查询相册列表（分页）
+   * 查询相册列表（分页）- 公开接口，支持随机排序
    */
-  async getAlbumList(query: QueryAlbumDto) {
+  async getAlbumListPublic(query: QueryAlbumDto) {
     const { page = 1, limit = 10, keyword } = query;
 
     // 使用 QueryBuilder 进行分页查询，支持随机排序
     const queryBuilder = this.albumRepository
       .createQueryBuilder('album')
       .orderBy('RAND()')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    // 如果有关键词，添加名称搜索条件
+    if (keyword) {
+      queryBuilder.where('album.name LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    // 为每个相册查询照片数量
+    const itemsWithCount = await Promise.all(
+      items.map(async (album) => {
+        const count = await this.albumRepository.createQueryBuilder('album').leftJoin('album.photos', 'photo').where('album.id = :id', { id: album.id }).select('COUNT(photo.id)', 'count').getRawOne();
+
+        return {
+          ...album,
+          photo_count: parseInt(count.count) || 0,
+        };
+      }),
+    );
+
+    this.logger.log(`查询相册列表成功（公开接口），共 ${total} 条，当前第 ${page} 页`);
+
+    return {
+      items: itemsWithCount,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * 查询相册列表（分页）- 管理接口，按创建时间排序
+   */
+  async getAlbumList(query: QueryAlbumDto) {
+    const { page = 1, limit = 10, keyword } = query;
+
+    // 使用 QueryBuilder 进行分页查询，按创建时间倒序
+    const queryBuilder = this.albumRepository
+      .createQueryBuilder('album')
+      .orderBy('album.create_time', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -184,7 +226,56 @@ export class AlbumService {
   }
 
   /**
-   * 分页查询相册中的照片
+   * 分页查询相册中的照片 - 公开接口，支持随机排序
+   * @param albumId 相册ID，为0时表示查询所有照片
+   */
+  async getPhotosPaginatedPublic(albumId: number, page: number = 1, limit: number = 10) {
+    // 如果 albumId 为 0，查询所有照片
+    if (albumId === 0) {
+      const query = this.photoRepository
+        .createQueryBuilder('photo')
+        .orderBy('RAND()')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      const [items, total] = await query.getManyAndCount();
+
+      this.logger.log(`查询所有照片成功（公开接口），共 ${total} 张，当前第 ${page} 页`);
+
+      return {
+        items,
+        total,
+        page,
+        limit,
+      };
+    }
+
+    // 先验证相册是否存在
+    await this.getAlbumDetail(albumId);
+
+    // 使用 QueryBuilder 进行分页查询
+    const query = this.photoRepository
+      .createQueryBuilder('photo')
+      .innerJoin('photo.albums', 'album')
+      .where('album.id = :albumId', { albumId })
+      .orderBy('RAND()')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await query.getManyAndCount();
+
+    this.logger.log(`查询相册 ${albumId} 的照片成功（公开接口），共 ${total} 张，当前第 ${page} 页`);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * 分页查询相册中的照片 - 管理接口，按创建时间排序
    * @param albumId 相册ID，为0时表示查询所有照片
    */
   async getPhotosPaginated(albumId: number, page: number = 1, limit: number = 10) {
@@ -192,7 +283,7 @@ export class AlbumService {
     if (albumId === 0) {
       const query = this.photoRepository
         .createQueryBuilder('photo')
-        .orderBy('RAND()')
+        .orderBy('photo.create_time', 'DESC')
         .skip((page - 1) * limit)
         .take(limit);
 
@@ -216,7 +307,7 @@ export class AlbumService {
       .createQueryBuilder('photo')
       .innerJoin('photo.albums', 'album')
       .where('album.id = :albumId', { albumId })
-      .orderBy('RAND()')
+      .orderBy('photo.create_time', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 

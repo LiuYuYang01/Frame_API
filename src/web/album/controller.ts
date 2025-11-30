@@ -91,6 +91,25 @@ export class AlbumController {
     return Result.success('从相册移除照片成功');
   }
 
+  @Get('/public/list')
+  @Public()
+  @ApiOperation({
+    summary: '获取相册列表（公开接口）',
+    description: '分页获取相册列表，支持按名称搜索，支持随机排序',
+  })
+  async listPublic(@Query() query: QueryAlbumDto) {
+    const result = await this.albumService.getAlbumListPublic(query);
+
+    const pagingData = Paging.filter({
+      items: result.items,
+      total: result.total,
+      page: result.page,
+      size: result.limit,
+    });
+
+    return Result.success('获取相册列表成功', pagingData);
+  }
+
   @Get('/list')
   @Public()
   @ApiOperation({
@@ -108,6 +127,32 @@ export class AlbumController {
     });
 
     return Result.success('获取相册列表成功', pagingData);
+  }
+
+  @Get('/public/:id/photos')
+  @Public()
+  @ApiOperation({
+    summary: '分页查询相册中的照片（公开接口）',
+    description: '分页查询指定相册中的所有照片，当id为0时查询所有照片，支持随机排序',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '相册ID，为0时表示查询所有照片',
+    example: 1,
+    type: Number,
+  })
+  async getPhotosPublic(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
+    const result = await this.albumService.getPhotosPaginatedPublic(id, query.page, query.limit);
+    const items = applyImageView2ToPhotos(result.items, query.width, query.height);
+
+    const pagingData = Paging.filter({
+      items,
+      total: result.total,
+      page: result.page,
+      size: result.limit,
+    });
+
+    return Result.success('查询相册照片成功', pagingData);
   }
 
   @Get(':id/photos')
