@@ -53,7 +53,7 @@ async function bootstrap() {
       },
       'JWT-auth',
     )
-    .addServer('http://localhost:6666', '开发环境')
+    .addServer('http://localhost:3000', '开发环境')
     .addServer('https://api.example.com', '生产环境')
     .setContact('技术支持', 'https://github.com/your-repo', 'support@example.com')
     .setLicense('MIT', 'https://opensource.org/licenses/MIT')
