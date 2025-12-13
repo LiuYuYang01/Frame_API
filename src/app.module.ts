@@ -7,10 +7,12 @@ import { FileModule } from '@/web/upload/module';
 import { PhotoModule } from '@/web/photo/module';
 import { AlbumModule } from '@/web/album/module';
 import { StatisModule } from '@/web/statis/module';
+import { FootprintModule } from '@/web/footprint/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@/entity/user';
 import { Photo } from '@/entity/photo';
 import { Album } from '@/entity/album';
+import { Footprint } from '@/entity/footprint';
 import { JwtAuthGuard } from '@/guard/jwt_auth';
 
 @Module({
@@ -33,7 +35,7 @@ import { JwtAuthGuard } from '@/guard/jwt_auth';
         database: configService.get<string>('DB_DATABASE', 'ThriveX_Phone'),
         synchronize: configService.get<string>('NODE_ENV') !== 'production', // 生产环境关闭
         logging: configService.get<string>('NODE_ENV') === 'development', // 仅开发环境显示SQL日志
-        entities: [User, Photo, Album],
+        entities: [User, Photo, Album, Footprint],
       }),
       inject: [ConfigService],
     }),
@@ -42,6 +44,7 @@ import { JwtAuthGuard } from '@/guard/jwt_auth';
     PhotoModule,
     AlbumModule,
     StatisModule,
+    FootprintModule,
   ],
   controllers: [AppController],
   providers: [
