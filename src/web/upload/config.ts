@@ -1,5 +1,3 @@
-import { ConfigService } from '@nestjs/config';
-
 export interface QiniuConfig {
   accessKey: string;
   secretKey: string;
@@ -15,6 +13,15 @@ export interface QiniuStorageEnvValue {
   domain: string;
   zone: string;
 }
+
+export const QINIU_ZONE_OPTIONS = [
+  'Zone_z0',
+  'Zone_cn_east_2',
+  'Zone_z1',
+  'Zone_z2',
+  'Zone_na0',
+  'Zone_as0',
+] as const;
 
 export function normalizeQiniuDomain(domain: string): string {
   let value = domain.trim();
@@ -40,22 +47,6 @@ export function mapEnvValueToQiniuConfig(value: QiniuStorageEnvValue): QiniuConf
   };
 }
 
-export function loadQiniuConfigFromEnv(configService: ConfigService): QiniuConfig | null {
-  const accessKey = configService.get<string>('QINIU_ACCESS_KEY')?.trim();
-  const secretKey = configService.get<string>('QINIU_SECRET_KEY')?.trim();
-  const bucket = configService.get<string>('QINIU_BUCKET')?.trim();
-  const domain = configService.get<string>('QINIU_DOMAIN')?.trim();
-  const zone = configService.get<string>('QINIU_ZONE')?.trim();
-
-  if (!accessKey || !secretKey || !bucket || !domain || !zone) {
-    return null;
-  }
-
-  return {
-    accessKey,
-    secretKey,
-    bucket,
-    domain: normalizeQiniuDomain(domain),
-    zone,
-  };
+export function isValidQiniuZone(zone: string): boolean {
+  return QINIU_ZONE_OPTIONS.includes(zone as (typeof QINIU_ZONE_OPTIONS)[number]);
 }

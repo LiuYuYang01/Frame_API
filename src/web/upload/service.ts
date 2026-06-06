@@ -12,6 +12,11 @@ interface QiniuSdkContext {
   bucketManager: qiniu.rs.BucketManager;
 }
 
+interface QiniuSdkResponse {
+  data: any;
+  resp: { statusCode: number };
+}
+
 @Injectable()
 export class QiniuService {
   private readonly logger = new Logger(QiniuService.name);
@@ -23,11 +28,7 @@ export class QiniuService {
     const mac = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
     const config = new qiniu.conf.Config();
     const zone = (qiniu.zone as Record<string, qiniu.conf.Zone>)[qiniuConfig.zone];
-    if (zone) {
-      config.zone = zone;
-    } else {
-      this.logger.warn(`未识别的七牛云区域配置: ${qiniuConfig.zone}，将使用 SDK 动态区域查询`);
-    }
+    config.zone = zone;
 
     return {
       qiniuConfig,
@@ -46,9 +47,30 @@ export class QiniuService {
     return putPolicy.uploadToken(mac);
   }
 
-  /**
-   * 上传文件
-   */
+  private isFormattedQiniuError(error: Error): boolean {
+    return error.message.startsWith('七牛云') || error.message.includes('未配置') || error.message.includes('配置无效');
+  }
+
+  private handleQiniuFailure(action: string, error: unknown): never {
+    if (error instanceof Error && this.isFormattedQiniuError(error)) {
+      this.logger.error(`${action}失败: ${error.message}`);
+      throw error;
+    }
+
+    const formatted = this.formatQiniuError(action, {
+      err: error instanceof Error ? error : new Error(String(error)),
+    });
+    this.logger.error(`${action}失败: ${formatted.message}`);
+    throw formatted;
+  }
+
+  private assertSuccess(action: string, statusCode: number, respBody?: unknown): void {
+    if (statusCode === 200) {
+      return;
+    }
+    throw this.formatQiniuError(action, { statusCode, respBody });
+  }
+
   async uploadFile(localFile: string, key?: string): Promise<{ hash: string; key: string }> {
     const { qiniuConfig, mac, config } = await this.getSdkContext();
 
@@ -61,79 +83,31 @@ export class QiniuService {
     const formUploader = new qiniu.form_up.FormUploader(config);
     const putExtra = new qiniu.form_up.PutExtra();
 
-    return new Promise((resolve, reject) => {
-      this.swallowSdkPromiseRejection(
-        formUploader.putFile(
-          token,
-          key,
-          localFile,
-          putExtra,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (err: Error | undefined, body: any, info: any) => {
-            if (err) {
-              const formatted = this.formatQiniuError('上传文件', { err });
-              this.logger.error(`文件上传失败: ${formatted.message}`);
-              reject(formatted);
-              return;
-            }
-
-            if (info.statusCode === 200) {
-              this.logger.log(`文件上传成功: ${key}`);
-              resolve({
-                hash: body.hash,
-                key: body.key,
-              });
-            } else {
-              const formatted = this.formatQiniuError('上传文件', { statusCode: info.statusCode, respBody: body });
-              this.logger.error(`文件上传失败: ${formatted.message}`);
-              reject(formatted);
-            }
-          },
-        ),
-      );
-    });
+    try {
+      const { data, resp } = (await formUploader.putFile(token, key, localFile, putExtra)) as QiniuSdkResponse;
+      this.assertSuccess('上传文件', resp.statusCode, data);
+      this.logger.log(`文件上传成功: ${key}`);
+      return {
+        hash: data.hash,
+        key: data.key,
+      };
+    } catch (error) {
+      this.handleQiniuFailure('上传文件', error);
+    }
   }
 
-  /**
-   * 删除文件
-   */
   async delFile(key: string): Promise<void> {
     const { qiniuConfig, bucketManager } = await this.getSdkContext();
 
-    return new Promise((resolve, reject) => {
-      this.swallowSdkPromiseRejection(
-        bucketManager.delete(
-          qiniuConfig.bucket,
-          key,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (err: Error | undefined, respBody: any, respInfo: any) => {
-            if (err) {
-              const formatted = this.formatQiniuError('删除文件', { err });
-              this.logger.error(`文件删除失败: ${formatted.message}`);
-              reject(formatted);
-              return;
-            }
-
-            if (respInfo.statusCode === 200) {
-              this.logger.log(`文件删除成功: ${key}`);
-              resolve();
-            } else {
-              const formatted = this.formatQiniuError('删除文件', {
-                statusCode: respInfo.statusCode,
-                respBody,
-              });
-              this.logger.error(`文件删除失败: ${formatted.message}`);
-              reject(formatted);
-            }
-          },
-        ),
-      );
-    });
+    try {
+      const { resp } = (await bucketManager.delete(qiniuConfig.bucket, key)) as QiniuSdkResponse;
+      this.assertSuccess('删除文件', resp.statusCode);
+      this.logger.log(`文件删除成功: ${key}`);
+    } catch (error) {
+      this.handleQiniuFailure('删除文件', error);
+    }
   }
 
-  /**
-   * 获取文件信息
-   */
   async getFileInfo(key: string): Promise<{
     fsize: number;
     hash: string;
@@ -143,48 +117,21 @@ export class QiniuService {
   }> {
     const { qiniuConfig, bucketManager } = await this.getSdkContext();
 
-    return new Promise((resolve, reject) => {
-      this.swallowSdkPromiseRejection(
-        bucketManager.stat(
-          qiniuConfig.bucket,
-          key,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (err: Error | undefined, respBody: any, respInfo: any) => {
-            if (err) {
-              const formatted = this.formatQiniuError('获取文件信息', { err });
-              this.logger.error(`获取文件信息失败: ${formatted.message}`);
-              reject(formatted);
-              return;
-            }
-
-            if (respInfo.statusCode === 200) {
-              this.logger.log(`获取文件信息成功: ${key}`);
-              resolve(respBody);
-            } else {
-              const formatted = this.formatQiniuError('获取文件信息', {
-                statusCode: respInfo.statusCode,
-                respBody,
-              });
-              this.logger.error(`获取文件信息失败: ${formatted.message}`);
-              reject(formatted);
-            }
-          },
-        ),
-      );
-    });
+    try {
+      const { data, resp } = (await bucketManager.stat(qiniuConfig.bucket, key)) as QiniuSdkResponse;
+      this.assertSuccess('获取文件信息', resp.statusCode, data);
+      this.logger.log(`获取文件信息成功: ${key}`);
+      return data;
+    } catch (error) {
+      this.handleQiniuFailure('获取文件信息', error);
+    }
   }
 
-  /**
-   * 生成公开空间访问链接
-   */
   async getPublicDownloadUrl(key: string): Promise<string> {
     const { qiniuConfig } = await this.getSdkContext();
     return `${qiniuConfig.domain}/${key}`;
   }
 
-  /**
-   * 获取图片信息（宽高等）
-   */
   async getImageInfo(url: string): Promise<{
     width: number;
     height: number;
@@ -216,9 +163,6 @@ export class QiniuService {
     }
   }
 
-  /**
-   * 分片上传文件（支持断点续传）
-   */
   async uploadFileByChunks(localFile: string, key?: string, resumeRecordFile?: string): Promise<{ hash: string; key: string }> {
     const { qiniuConfig, mac, config } = await this.getSdkContext();
 
@@ -235,42 +179,19 @@ export class QiniuService {
       putExtra.resumeRecordFile = resumeRecordFile;
     }
 
-    return new Promise((resolve, reject) => {
-      this.swallowSdkPromiseRejection(
-        resumeUploader.putFile(
-          token,
-          key,
-          localFile,
-          putExtra,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (err: Error | undefined, body: any, info: any) => {
-            if (err) {
-              const formatted = this.formatQiniuError('上传文件', { err });
-              this.logger.error(`分片上传失败: ${formatted.message}`);
-              reject(formatted);
-              return;
-            }
-
-            if (info.statusCode === 200) {
-              this.logger.log(`分片上传成功: ${key}, hash: ${body.hash}`);
-              resolve({
-                hash: body.hash,
-                key: body.key,
-              });
-            } else {
-              const formatted = this.formatQiniuError('上传文件', { statusCode: info.statusCode, respBody: body });
-              this.logger.error(`分片上传失败: ${formatted.message}`);
-              reject(formatted);
-            }
-          },
-        ),
-      );
-    });
+    try {
+      const { data, resp } = (await resumeUploader.putFile(token, key, localFile, putExtra)) as QiniuSdkResponse;
+      this.assertSuccess('上传文件', resp.statusCode, data);
+      this.logger.log(`分片上传成功: ${key}, hash: ${data.hash}`);
+      return {
+        hash: data.hash,
+        key: data.key,
+      };
+    } catch (error) {
+      this.handleQiniuFailure('上传文件', error);
+    }
   }
 
-  /**
-   * 上传文件分片（用于前端分片上传）
-   */
   async uploadChunk(
     chunkData: Buffer,
     uploadId: string,
@@ -364,21 +285,18 @@ export class QiniuService {
 
   private resolveQiniuMessage(sdkMessage: string): string {
     if (sdkMessage.includes('app/accesskey is not found')) {
-      return '七牛云 AccessKey 不存在，请检查后台配置';
-    }
-    if (sdkMessage.includes('Query regions failed')) {
-      return '七牛云配置有误，请检查 AccessKey、Bucket 和区域（Zone）设置';
+      return '七牛云 AccessKey 不存在，请检查管理端系统配置';
     }
     return sdkMessage;
   }
 
   private getStatusCodeHint(statusCode: number): string | undefined {
     const hints: Record<number, string> = {
-      401: '七牛云密钥认证失败，请检查 AccessKey 和 SecretKey',
+      401: '七牛云密钥认证失败，请检查管理端系统配置中的 AccessKey 和 SecretKey',
       403: '七牛云无权限执行此操作',
       404: '文件在七牛云中不存在',
-      612: '七牛云 AccessKey 不存在，请检查后台配置',
-      631: '七牛云存储空间不存在，请检查 Bucket 配置',
+      612: '七牛云 AccessKey 不存在，请检查管理端系统配置',
+      631: '七牛云存储空间不存在，请检查管理端系统配置中的 Bucket',
     };
     return hints[statusCode];
   }
@@ -389,10 +307,6 @@ export class QiniuService {
     }
     const error = (respBody as { error?: string }).error;
     return typeof error === 'string' ? error : undefined;
-  }
-
-  private swallowSdkPromiseRejection(promise: Promise<unknown>): void {
-    void promise.catch(() => {});
   }
 
   private async fileExists(filePath: string): Promise<boolean> {

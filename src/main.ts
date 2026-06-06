@@ -4,11 +4,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { GlobalExceptionHandler } from './execption/global_exception_handler';
 
-// 七牛 SDK 内部对 rejected Promise 有未处理的 .then() 分支，需兜底防止进程退出
-process.on('unhandledRejection', (reason) => {
-  console.error('未处理的 Promise 拒绝:', reason);
-});
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

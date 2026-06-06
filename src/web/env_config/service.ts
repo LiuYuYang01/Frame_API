@@ -1,11 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EnvConfig } from '@/entity/env_config';
 import { CustomException } from '@/execption/global_exception_handler';
 import {
-  loadQiniuConfigFromEnv,
+  isValidQiniuZone,
   mapEnvValueToQiniuConfig,
   QiniuConfig,
   QiniuStorageEnvValue,
@@ -23,7 +22,6 @@ export class EnvConfigService implements OnModuleInit {
   constructor(
     @InjectRepository(EnvConfig)
     private readonly envConfigRepository: Repository<EnvConfig>,
-    private readonly configService: ConfigService,
   ) { }
 
   async onModuleInit() {
@@ -40,11 +38,11 @@ export class EnvConfigService implements OnModuleInit {
       {
         name: 'qiniu_storage',
         value: {
-          access_key: this.configService.get<string>('QINIU_ACCESS_KEY') || '',
-          secret_key: this.configService.get<string>('QINIU_SECRET_KEY') || '',
-          bucket_name: this.configService.get<string>('QINIU_BUCKET') || '',
-          domain: this.configService.get<string>('QINIU_DOMAIN') || '',
-          zone: this.configService.get<string>('QINIU_ZONE') || 'Zone_z2',
+          access_key: '',
+          secret_key: '',
+          bucket_name: '',
+          domain: '',
+          zone: 'Zone_z2',
         },
         notes: '七牛云存储配置',
       },
@@ -90,15 +88,14 @@ export class EnvConfigService implements OnModuleInit {
 
   async getQiniuStorageEnvValueAsync(): Promise<QiniuStorageEnvValue> {
     const config = await this.getByName('qiniu_storage');
-    const envFallback = loadQiniuConfigFromEnv(this.configService);
     const value = config?.value ?? {};
 
     return {
-      access_key: String(value.access_key || envFallback?.accessKey || ''),
-      secret_key: String(value.secret_key || envFallback?.secretKey || ''),
-      bucket_name: String(value.bucket_name || envFallback?.bucket || ''),
-      domain: String(value.domain || envFallback?.domain || ''),
-      zone: String(value.zone || envFallback?.zone || 'Zone_z2'),
+      access_key: String(value.access_key || ''),
+      secret_key: String(value.secret_key || ''),
+      bucket_name: String(value.bucket_name || ''),
+      domain: String(value.domain || ''),
+      zone: String(value.zone || 'Zone_z2'),
     };
   }
 
@@ -120,6 +117,9 @@ export class EnvConfigService implements OnModuleInit {
     }
     if (!qiniuConfig.zone) {
       throw new CustomException(500, '七牛云区域未配置，请在管理端系统配置中填写');
+    }
+    if (!isValidQiniuZone(qiniuConfig.zone)) {
+      throw new CustomException(500, `七牛云区域配置无效: ${qiniuConfig.zone}，请在管理端系统配置中修改`);
     }
 
     return qiniuConfig;
