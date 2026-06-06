@@ -144,7 +144,7 @@ export class FileController {
     // 使用哈希值作为文件名
     const ext = path.extname(file.originalname);
     const key = `${fileHash}${ext}`;
-    const url = this.qiniuService.getPublicDownloadUrl(key);
+    const url = await this.qiniuService.getPublicDownloadUrl(key);
 
     // 如果数据库已存在相同 URL，则直接复用
     const existingPhoto = await this.photoService.findByUrl(url);
@@ -246,7 +246,7 @@ export class FileController {
     if (result.completed && result.key && result.hash) {
       const ext = path.extname(fileName);
       const finalKey = key || result.key;
-      const url = this.qiniuService.getPublicDownloadUrl(finalKey);
+      const url = await this.qiniuService.getPublicDownloadUrl(finalKey);
 
       // 检查是否已存在（使用客户端传入的hash进行秒传检查）
       let photo: Photo | undefined;
