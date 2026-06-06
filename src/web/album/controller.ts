@@ -8,7 +8,7 @@ import { ManagePhotosDto } from './dto/manage_photos';
 import { Result } from '@/utils/response';
 import { Paging } from '@/utils/paging';
 import { AlbumPhotoQueryDto } from './dto/album_photo_query';
-import { applyImageView2ToPhotos } from '@/utils/image';
+import { applyImageProcessingToCover, applyImageProcessingToPhotos, resolveImageOptions } from '@/utils/image';
 import { Public } from '@/decorator/public';
 
 @ApiTags('相册管理')
@@ -16,6 +16,22 @@ import { Public } from '@/decorator/public';
 @Controller('album')
 export class AlbumController {
   constructor(private readonly albumService: AlbumService) {}
+
+  private processAlbumCovers<T extends { cover?: string }>(items: T[], query: QueryAlbumDto) {
+    const coverOptions = resolveImageOptions({
+      scene: query.scene ?? (query.width || query.height || query.quality !== undefined || query.format ? undefined : 'cover'),
+      width: query.width,
+      height: query.height,
+      quality: query.quality,
+      format: query.format,
+    });
+
+    if (!coverOptions) {
+      return items.map((item) => applyImageProcessingToCover(item, null));
+    }
+
+    return items.map((item) => applyImageProcessingToCover(item, coverOptions));
+  }
 
   @Post()
   @ApiOperation({
@@ -99,9 +115,10 @@ export class AlbumController {
   })
   async listPublic(@Query() query: QueryAlbumDto) {
     const result = await this.albumService.getAlbumListPublic(query);
+    const items = this.processAlbumCovers(result.items, query);
 
     const pagingData = Paging.filter({
-      items: result.items,
+      items,
       total: result.total,
       page: result.page,
       size: result.limit,
@@ -118,9 +135,10 @@ export class AlbumController {
   })
   async list(@Query() query: QueryAlbumDto) {
     const result = await this.albumService.getAlbumList(query);
+    const items = this.processAlbumCovers(result.items, query);
 
     const pagingData = Paging.filter({
-      items: result.items,
+      items,
       total: result.total,
       page: result.page,
       size: result.limit,
@@ -143,7 +161,8 @@ export class AlbumController {
   })
   async getPhotosPublic(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
     const result = await this.albumService.getPhotosPaginatedPublic(id, query.page, query.limit);
-    const items = applyImageView2ToPhotos(result.items, query.width, query.height);
+    const imageOptions = resolveImageOptions(query);
+    const items = applyImageProcessingToPhotos(result.items, imageOptions);
 
     const pagingData = Paging.filter({
       items,
@@ -169,7 +188,8 @@ export class AlbumController {
   })
   async getPhotos(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
     const result = await this.albumService.getPhotosPaginated(id, query.page, query.limit);
-    const items = applyImageView2ToPhotos(result.items, query.width, query.height);
+    const imageOptions = resolveImageOptions(query);
+    const items = applyImageProcessingToPhotos(result.items, imageOptions);
 
     const pagingData = Paging.filter({
       items,
@@ -194,7 +214,8 @@ export class AlbumController {
   })
   async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
     const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit, query.keyword);
-    const items = applyImageView2ToPhotos(result.items, query.width, query.height);
+    const imageOptions = resolveImageOptions(query);
+    const items = applyImageProcessingToPhotos(result.items, imageOptions);
 
     const pagingData = Paging.filter({
       items,

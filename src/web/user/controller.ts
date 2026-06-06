@@ -1,10 +1,12 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { Controller, Post, Patch, Body, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './service';
 import { LoginDto } from './dto/login';
 import { LoginResponse } from './dto/login_response';
+import { UpdateProfileDto } from './dto/update_profile';
 import { Public } from '@/decorator/public';
 import { Result } from '@/utils/response';
+import { User } from '@/entity/user';
 
 @ApiTags('用户管理')
 @Controller('user')
@@ -21,5 +23,17 @@ export class UserController {
   async login(@Body() loginDto: LoginDto): Promise<Result<LoginResponse>> {
     const result = await this.userService.login(loginDto);
     return Result.success('登录成功', result);
+  }
+
+  @Patch('profile')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: '更新个人资料',
+    description: '修改账号、名称或密码',
+  })
+  @ApiBody({ type: UpdateProfileDto })
+  async updateProfile(@Req() req: { user: User }, @Body() dto: UpdateProfileDto) {
+    const user = await this.userService.updateProfile(req.user.id, dto);
+    return Result.success('更新成功', user);
   }
 }
