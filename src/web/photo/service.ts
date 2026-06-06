@@ -124,6 +124,15 @@ export class PhotoService {
   }
 
   /**
+   * 根据 hash 查询照片（用于秒传）
+   */
+  async findByHash(hash: string) {
+    return this.photoRepository.findOne({
+      where: { hash },
+    });
+  }
+
+  /**
    * 根据多个ID查询照片
    */
   async findByIds(ids: number[]) {
