@@ -25,11 +25,6 @@ export interface PagingResult<T> {
  * 分页工具类
  */
 export class Paging {
-  /**
-   * 将分页数据过滤为指定格式
-   * @param data 分页数据对象
-   * @returns 格式化后的分页结果
-   */
   static filter<T>(data: PageData<T>): PagingResult<T> {
     const pages = Math.ceil(data.total / data.size); // 总页数
 
