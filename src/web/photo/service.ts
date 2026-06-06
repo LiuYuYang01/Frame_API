@@ -80,8 +80,9 @@ export class PhotoService {
       await this.qiniuService.delFile(key);
       this.logger.log(`七牛云文件删除成功: ${key}`);
     } catch (error) {
-      this.logger.error(`七牛云文件删除失败: ${error.message}`);
-      throw new CustomException(500, `七牛云文件删除失败: ${error.message}`);
+      const message = error instanceof Error ? error.message : '七牛云文件删除失败';
+      this.logger.error(message);
+      throw new CustomException(500, message);
     }
 
     // 七牛云删除成功后，再删除数据库记录

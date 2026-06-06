@@ -19,8 +19,13 @@ export class QiniuService {
     this.mac = new qiniu.auth.digest.Mac(this.qiniuConfig.accessKey, this.qiniuConfig.secretKey);
 
     this.config = new qiniu.conf.Config();
-    // 根据配置设置区域
-    // this.config.zone = qiniu.zone[this.qiniuConfig.zone];
+    // 配置 zone 可跳过 SDK 动态区域查询，避免密钥错误时触发 SDK 内部未捕获的 Promise rejection
+    const zone = (qiniu.zone as Record<string, qiniu.conf.Zone>)[this.qiniuConfig.zone];
+    if (zone) {
+      this.config.zone = zone;
+    } else {
+      this.logger.warn(`未识别的七牛云区域配置: ${this.qiniuConfig.zone}，将使用 SDK 动态区域查询`);
+    }
 
     this.bucketManager = new qiniu.rs.BucketManager(this.mac, this.config);
   }
@@ -58,32 +63,35 @@ export class QiniuService {
       const formUploader = new qiniu.form_up.FormUploader(this.config);
       const putExtra = new qiniu.form_up.PutExtra();
 
-      void formUploader.putFile(
-        token,
-        key,
-        localFile,
-        putExtra,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, body: any, info: any) => {
-          if (err) {
-            this.logger.error(`文件上传失败: ${err.message}`);
-            reject(err);
-            return;
-          }
+      this.swallowSdkPromiseRejection(
+        formUploader.putFile(
+          token,
+          key,
+          localFile,
+          putExtra,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (err: Error | undefined, body: any, info: any) => {
+            if (err) {
+              const formatted = this.formatQiniuError('上传文件', { err });
+              this.logger.error(`文件上传失败: ${formatted.message}`);
+              reject(formatted);
+              return;
+            }
 
-          if (info.statusCode === 200) {
-            this.logger.log(`文件上传成功: ${key}`);
-            resolve({
-              hash: body.hash,
+            if (info.statusCode === 200) {
+              this.logger.log(`文件上传成功: ${key}`);
+              resolve({
+                hash: body.hash,
 
-              key: body.key,
-            });
-          } else {
-            this.logger.error(`文件上传失败: ${info.statusCode}`);
-
-            reject(new Error(`上传失败: ${info.statusCode}`));
-          }
-        },
+                key: body.key,
+              });
+            } else {
+              const formatted = this.formatQiniuError('上传文件', { statusCode: info.statusCode, respBody: body });
+              this.logger.error(`文件上传失败: ${formatted.message}`);
+              reject(formatted);
+            }
+          },
+        ),
       );
     });
   }
@@ -95,26 +103,31 @@ export class QiniuService {
    */
   async delFile(key: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      void this.bucketManager.delete(
-        this.qiniuConfig.bucket,
-        key,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, respBody: any, respInfo: any) => {
-          if (err) {
-            this.logger.error(`文件删除失败: ${err.message}`);
-            reject(err);
-            return;
-          }
+      this.swallowSdkPromiseRejection(
+        this.bucketManager.delete(
+          this.qiniuConfig.bucket,
+          key,
+          (err: Error | undefined, respBody: any, respInfo: any) => {
+            if (err) {
+              const formatted = this.formatQiniuError('删除文件', { err });
+              this.logger.error(`文件删除失败: ${formatted.message}`);
+              reject(formatted);
+              return;
+            }
 
-          if (respInfo.statusCode === 200) {
-            this.logger.log(`文件删除成功: ${key}`);
-            resolve();
-          } else {
-            this.logger.error(`文件删除失败: ${respInfo.statusCode}`);
-
-            reject(new Error(`删除失败: ${respInfo.statusCode}`));
-          }
-        },
+            if (respInfo.statusCode === 200) {
+              this.logger.log(`文件删除成功: ${key}`);
+              resolve();
+            } else {
+              const formatted = this.formatQiniuError('删除文件', {
+                statusCode: respInfo.statusCode,
+                respBody,
+              });
+              this.logger.error(`文件删除失败: ${formatted.message}`);
+              reject(formatted);
+            }
+          },
+        ),
       );
     });
   }
@@ -132,27 +145,32 @@ export class QiniuService {
     type: number;
   }> {
     return new Promise((resolve, reject) => {
-      void this.bucketManager.stat(
-        this.qiniuConfig.bucket,
-        key,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, respBody: any, respInfo: any) => {
-          if (err) {
-            this.logger.error(`获取文件信息失败: ${err.message}`);
-            reject(err);
-            return;
-          }
+      this.swallowSdkPromiseRejection(
+        this.bucketManager.stat(
+          this.qiniuConfig.bucket,
+          key,
+          (err: Error | undefined, respBody: any, respInfo: any) => {
+            if (err) {
+              const formatted = this.formatQiniuError('获取文件信息', { err });
+              this.logger.error(`获取文件信息失败: ${formatted.message}`);
+              reject(formatted);
+              return;
+            }
 
-          if (respInfo.statusCode === 200) {
-            this.logger.log(`获取文件信息成功: ${key}`);
+            if (respInfo.statusCode === 200) {
+              this.logger.log(`获取文件信息成功: ${key}`);
 
-            resolve(respBody);
-          } else {
-            this.logger.error(`获取文件信息失败: ${respInfo.statusCode}`);
-
-            reject(new Error(`获取文件信息失败: ${respInfo.statusCode}`));
-          }
-        },
+              resolve(respBody);
+            } else {
+              const formatted = this.formatQiniuError('获取文件信息', {
+                statusCode: respInfo.statusCode,
+                respBody,
+              });
+              this.logger.error(`获取文件信息失败: ${formatted.message}`);
+              reject(formatted);
+            }
+          },
+        ),
       );
     });
   }
@@ -232,30 +250,34 @@ export class QiniuService {
         putExtra.resumeRecordFile = resumeRecordFile;
       }
 
-      void resumeUploader.putFile(
-        token,
-        key,
-        localFile,
-        putExtra,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: Error | undefined, body: any, info: any) => {
-          if (err) {
-            this.logger.error(`分片上传失败: ${err.message}`);
-            reject(err);
-            return;
-          }
+      this.swallowSdkPromiseRejection(
+        resumeUploader.putFile(
+          token,
+          key,
+          localFile,
+          putExtra,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (err: Error | undefined, body: any, info: any) => {
+            if (err) {
+              const formatted = this.formatQiniuError('上传文件', { err });
+              this.logger.error(`分片上传失败: ${formatted.message}`);
+              reject(formatted);
+              return;
+            }
 
-          if (info.statusCode === 200) {
-            this.logger.log(`分片上传成功: ${key}, hash: ${body.hash}`);
-            resolve({
-              hash: body.hash,
-              key: body.key,
-            });
-          } else {
-            this.logger.error(`分片上传失败: ${info.statusCode}`);
-            reject(new Error(`上传失败: ${info.statusCode}`));
-          }
-        },
+            if (info.statusCode === 200) {
+              this.logger.log(`分片上传成功: ${key}, hash: ${body.hash}`);
+              resolve({
+                hash: body.hash,
+                key: body.key,
+              });
+            } else {
+              const formatted = this.formatQiniuError('上传文件', { statusCode: info.statusCode, respBody: body });
+              this.logger.error(`分片上传失败: ${formatted.message}`);
+              reject(formatted);
+            }
+          },
+        ),
       );
     });
   }
@@ -342,6 +364,63 @@ export class QiniuService {
       uploaded: uploadedChunks,
       completed: false,
     };
+  }
+
+  private formatQiniuError(
+    action: string,
+    options: { err?: Error; statusCode?: number; respBody?: unknown },
+  ): Error {
+    const { err, statusCode, respBody } = options;
+
+    if (err?.message) {
+      return new Error(this.resolveQiniuMessage(err.message));
+    }
+
+    const bodyError = this.extractResponseError(respBody);
+    const statusHint = statusCode !== undefined ? this.getStatusCodeHint(statusCode) : undefined;
+
+    if (statusHint) {
+      return new Error(bodyError ? `${statusHint}（${bodyError}）` : statusHint);
+    }
+
+    if (statusCode !== undefined) {
+      return new Error(bodyError ? `${action}失败（HTTP ${statusCode}：${bodyError}）` : `${action}失败（HTTP ${statusCode}）`);
+    }
+
+    return new Error(`${action}失败`);
+  }
+
+  private resolveQiniuMessage(sdkMessage: string): string {
+    if (sdkMessage.includes('app/accesskey is not found')) {
+      return '七牛云 AccessKey 不存在，请检查后台配置';
+    }
+    if (sdkMessage.includes('Query regions failed')) {
+      return '七牛云配置有误，请检查 AccessKey、Bucket 和区域（Zone）设置';
+    }
+    return sdkMessage;
+  }
+
+  private getStatusCodeHint(statusCode: number): string | undefined {
+    const hints: Record<number, string> = {
+      401: '七牛云密钥认证失败，请检查 AccessKey 和 SecretKey',
+      403: '七牛云无权限执行此操作',
+      404: '文件在七牛云中不存在',
+      612: '七牛云 AccessKey 不存在，请检查后台配置',
+      631: '七牛云存储空间不存在，请检查 Bucket 配置',
+    };
+    return hints[statusCode];
+  }
+
+  private extractResponseError(respBody: unknown): string | undefined {
+    if (!respBody || typeof respBody !== 'object') {
+      return undefined;
+    }
+    const error = (respBody as { error?: string }).error;
+    return typeof error === 'string' ? error : undefined;
+  }
+
+  private swallowSdkPromiseRejection(promise: Promise<unknown>): void {
+    void promise.catch(() => {});
   }
 
   /**
