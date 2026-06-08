@@ -7,6 +7,9 @@ import { AlbumService } from '@/web/album/service';
 import { Result } from '@/utils/response';
 import { Photo } from '@/entity/photo';
 import { CustomException } from '@/execption/global_exception_handler';
+import { PreUploadDto } from './dto/pre_upload';
+import { ConfirmUploadDto } from './dto/confirm_upload';
+import { ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_MIME_TYPES } from './config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -22,6 +25,103 @@ export class FileController {
     private readonly photoService: PhotoService,
     private readonly albumService: AlbumService,
   ) {}
+
+  private async validateAlbumId(albumId: number): Promise<void> {
+    try {
+      await this.albumService.getAlbumDetail(albumId);
+    } catch (error) {
+      throw new CustomException(400, `相册不存在：${error.message}`);
+    }
+  }
+
+  private validateImageFile(fileName: string, mimeType: string): void {
+    const ext = path.extname(fileName).toLowerCase();
+
+    if (!ALLOWED_IMAGE_MIME_TYPES.includes(mimeType) || !ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
+      throw new CustomException(400, '仅支持的图片格式：jpg、jpeg、png、gif、webp、bmp');
+    }
+  }
+
+  private assertObjectKeyMatchesHash(hash: string, fileName: string, key: string): void {
+    const expectedKey = this.qiniuService.buildObjectKey(hash, fileName);
+    if (key !== expectedKey) {
+      throw new CustomException(400, '文件 key 与 hash 不匹配');
+    }
+  }
+
+  /**
+   * 直传预检：秒传检查或返回七牛上传凭证
+   */
+  @Post('pre-upload')
+  @ApiOperation({
+    summary: '直传预检',
+    description: '检查文件是否已存在（秒传），否则返回七牛直传凭证',
+  })
+  async preUpload(@Body() body: PreUploadDto) {
+    this.validateImageFile(body.fileName, body.type);
+    await this.validateAlbumId(body.albumId);
+
+    const existingPhoto = await this.photoService.findByHash(body.hash);
+    if (existingPhoto) {
+      await this.albumService.addPhotos(body.albumId, [existingPhoto.id]);
+      this.logger.log(`秒传命中：${existingPhoto.id} - ${existingPhoto.url}`);
+      return Result.success('秒传成功', {
+        instant: true,
+        photo: existingPhoto,
+      });
+    }
+
+    const key = this.qiniuService.buildObjectKey(body.hash, body.fileName);
+    const credentials = await this.qiniuService.getDirectUploadCredentials(key);
+
+    return Result.success('获取上传凭证成功', {
+      instant: false,
+      ...credentials,
+    });
+  }
+
+  /**
+   * 直传确认：七牛上传完成后写入数据库并关联相册
+   */
+  @Post('confirm')
+  @ApiOperation({
+    summary: '直传确认',
+    description: '客户端直传七牛成功后，确认并保存图片信息到数据库',
+  })
+  async confirmUpload(@Body() body: ConfirmUploadDto) {
+    this.validateImageFile(body.fileName, body.type);
+    await this.validateAlbumId(body.albumId);
+    this.assertObjectKeyMatchesHash(body.hash, body.fileName, body.key);
+
+    const existingPhoto = await this.photoService.findByHash(body.hash);
+    if (existingPhoto) {
+      await this.albumService.addPhotos(body.albumId, [existingPhoto.id]);
+      return Result.success('上传成功', existingPhoto);
+    }
+
+    const url = await this.qiniuService.getPublicDownloadUrl(body.key);
+
+    try {
+      await this.qiniuService.getFileInfo(body.key);
+    } catch (error) {
+      throw new CustomException(400, `七牛云文件不存在或未上传完成：${error.message}`);
+    }
+
+    const photo = await this.photoService.createPhoto({
+      name: body.hash,
+      url,
+      size: body.size,
+      width: body.width || 0,
+      height: body.height || 0,
+      type: body.type,
+      hash: body.hash,
+    });
+
+    await this.albumService.addPhotos(body.albumId, [photo.id]);
+    this.logger.log(`直传确认成功：${photo.id} - ${photo.url}`);
+
+    return Result.success('上传成功', photo);
+  }
 
   /**
    * 上传文件（支持单个或多个）
@@ -80,9 +180,8 @@ export class FileController {
     }
 
     // 允许的图片格式
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
-
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+    const allowedMimeTypes = ALLOWED_IMAGE_MIME_TYPES;
+    const allowedExtensions = ALLOWED_IMAGE_EXTENSIONS;
 
     // 验证所有文件都是图片格式
     for (const file of files) {

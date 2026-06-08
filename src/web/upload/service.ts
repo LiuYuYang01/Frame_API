@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as qiniu from 'qiniu';
-import { QiniuConfig } from './config';
+import { QiniuConfig, getQiniuUploadUrl } from './config';
 import { EnvConfigService } from '@/web/env_config/service';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -130,6 +130,26 @@ export class QiniuService {
   async getPublicDownloadUrl(key: string): Promise<string> {
     const { qiniuConfig } = await this.getSdkContext();
     return `${qiniuConfig.domain}/${key}`;
+  }
+
+  async getDirectUploadCredentials(key: string): Promise<{
+    uploadToken: string;
+    key: string;
+    uploadUrl: string;
+  }> {
+    const { qiniuConfig, mac } = await this.getSdkContext();
+    const uploadToken = this.createUploadToken(mac, qiniuConfig.bucket, key);
+
+    return {
+      uploadToken,
+      key,
+      uploadUrl: getQiniuUploadUrl(qiniuConfig.zone),
+    };
+  }
+
+  buildObjectKey(hash: string, fileName: string): string {
+    const ext = path.extname(fileName).toLowerCase();
+    return `${hash}${ext}`;
   }
 
   async getImageInfo(url: string): Promise<{
