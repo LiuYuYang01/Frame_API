@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PhotoService } from './service';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
 import { DeletePhotoDto } from './dto/delete_photo';
+import { SlimPhotoDto, SlimPhotoQueryDto } from './dto/slim_photo';
 import { Result } from '@/utils/response';
 import { Public } from '@/decorator/public';
 
@@ -58,5 +59,25 @@ export class PhotoController {
   async delPhoto(@Body() data: DeletePhotoDto) {
     await this.photoService.delPhotos(data.ids);
     return Result.success('照片删除成功');
+  }
+
+  @Get('slim/preview')
+  @ApiOperation({
+    summary: '预览待瘦身照片',
+    description: '统计指定相册或照片列表中符合瘦身条件的图片数量与体积',
+  })
+  async previewSlimPhotos(@Query() query: SlimPhotoQueryDto) {
+    const preview = await this.photoService.previewSlimPhotos(query);
+    return Result.success('获取瘦身预览成功', preview);
+  }
+
+  @Post('slim')
+  @ApiOperation({
+    summary: '批量瘦身照片',
+    description: '通过七牛 pfop 持久化处理压缩已上传原图，并更新数据库中的体积与尺寸',
+  })
+  async slimPhotos(@Body() data: SlimPhotoDto) {
+    const summary = await this.photoService.slimPhotos(data);
+    return Result.success('照片瘦身完成', summary);
   }
 }

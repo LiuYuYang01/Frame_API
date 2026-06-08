@@ -2,6 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as qiniu from 'qiniu';
 import { QiniuConfig, getQiniuUploadUrl } from './config';
 import { EnvConfigService } from '@/web/env_config/service';
+import {
+  DEFAULT_SLIM_MAX_LONG_EDGE,
+  DEFAULT_SLIM_QUALITY,
+  PFOP_MAX_WAIT_MS,
+  PFOP_POLL_INTERVAL_MS,
+} from '@/constants/image_slim';
+import { stripImageProcessing } from '@/utils/image';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -15,6 +22,18 @@ interface QiniuSdkContext {
 interface QiniuSdkResponse {
   data: any;
   resp: { statusCode: number };
+}
+
+interface PfopStatus {
+  code: number;
+  desc: string;
+  items?: Array<{ code: number; desc: string; error?: string }>;
+}
+
+export interface SlimImageOptions {
+  maxLongEdge?: number;
+  quality?: number;
+  pipeline?: string;
 }
 
 @Injectable()
@@ -130,6 +149,169 @@ export class QiniuService {
   async getPublicDownloadUrl(key: string): Promise<string> {
     const { qiniuConfig } = await this.getSdkContext();
     return `${qiniuConfig.domain}/${key}`;
+  }
+
+  extractKeyFromUrl(url: string): string {
+    const cleanUrl = stripImageProcessing(url);
+    const parsed = new URL(cleanUrl);
+    return decodeURIComponent(parsed.pathname.replace(/^\//, ''));
+  }
+
+  buildTempSlimKey(key: string): string {
+    return `${key}.frame.slim.tmp`;
+  }
+
+  async slimImageByPfop(
+    key: string,
+    options: SlimImageOptions = {},
+  ): Promise<{ fsize: number; hash: string; mimeType: string }> {
+    const maxLongEdge = options.maxLongEdge ?? DEFAULT_SLIM_MAX_LONG_EDGE;
+    const quality = options.quality ?? DEFAULT_SLIM_QUALITY;
+    const pipeline = options.pipeline ?? '';
+    const { qiniuConfig, mac, config } = await this.getSdkContext();
+    const bucket = qiniuConfig.bucket;
+    const tempKey = this.buildTempSlimKey(key);
+    const saveasEntry = qiniu.util.urlsafeBase64Encode(`${bucket}:${tempKey}`);
+    const fops = [
+      `imageMogr2/auto-orient/thumbnail/${maxLongEdge}x${maxLongEdge}>/strip/quality/${quality}/format/jpg|saveas/${saveasEntry}`,
+    ];
+
+    await this.deleteFileIfExists(tempKey);
+
+    const opManager = new qiniu.fop.OperationManager(mac, config);
+    const { persistentId } = await this.runPfop(opManager, bucket, key, fops, pipeline);
+    await this.waitPfop(opManager, persistentId);
+
+    try {
+      await this.moveFile(bucket, tempKey, bucket, key, true);
+    } catch (error) {
+      await this.deleteFileIfExists(tempKey);
+      throw error;
+    }
+
+    const stat = await this.getFileInfo(key);
+    return {
+      fsize: stat.fsize,
+      hash: stat.hash,
+      mimeType: stat.mimeType,
+    };
+  }
+
+  private async runPfop(
+    opManager: qiniu.fop.OperationManager,
+    bucket: string,
+    key: string,
+    fops: string[],
+    pipeline: string,
+  ): Promise<{ persistentId: string }> {
+    return new Promise((resolve, reject) => {
+      opManager.pfop(bucket, key, fops, pipeline, null, (err, body, respInfo) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (!respInfo || respInfo.statusCode !== 200) {
+          reject(this.formatQiniuError('持久化图片处理', { statusCode: respInfo?.statusCode, respBody: body }));
+          return;
+        }
+        if (!body?.persistentId) {
+          reject(new Error('七牛云未返回持久化处理 ID'));
+          return;
+        }
+        resolve({ persistentId: body.persistentId });
+      });
+    });
+  }
+
+  private async waitPfop(opManager: qiniu.fop.OperationManager, persistentId: string): Promise<void> {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < PFOP_MAX_WAIT_MS) {
+      const status = await this.queryPfop(opManager, persistentId);
+
+      // 七牛 prefop 状态码：0 成功，1 等待处理，2 正在处理，3 处理失败，4 回调失败
+      if (status.code === 0) {
+        const failedItem = status.items?.find((item) => item.code !== 0);
+        if (failedItem) {
+          throw new Error(failedItem.error || failedItem.desc || '七牛云图片处理失败');
+        }
+        return;
+      }
+
+      if (status.code === 1 || status.code === 2) {
+        await this.sleep(PFOP_POLL_INTERVAL_MS);
+        continue;
+      }
+
+      if (status.code === 3) {
+        const failedItem = status.items?.find((item) => item.error || item.code === 3);
+        throw new Error(failedItem?.error || status.desc || '七牛云图片处理失败');
+      }
+
+      if (status.code === 4) {
+        const failedItem = status.items?.find((item) => item.code !== 0);
+        if (failedItem) {
+          throw new Error(failedItem.error || failedItem.desc || status.desc || '七牛云图片处理失败');
+        }
+        return;
+      }
+
+      await this.sleep(PFOP_POLL_INTERVAL_MS);
+    }
+
+    throw new Error('七牛云图片处理超时，请稍后重试');
+  }
+
+  private queryPfop(opManager: qiniu.fop.OperationManager, persistentId: string): Promise<PfopStatus> {
+    return new Promise((resolve, reject) => {
+      opManager.prefop(persistentId, (err, body, respInfo) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (!respInfo || respInfo.statusCode !== 200) {
+          reject(this.formatQiniuError('查询持久化处理进度', { statusCode: respInfo?.statusCode, respBody: body }));
+          return;
+        }
+        resolve(body as PfopStatus);
+      });
+    });
+  }
+
+  async moveFile(
+    srcBucket: string,
+    srcKey: string,
+    destBucket: string,
+    destKey: string,
+    force = false,
+  ): Promise<void> {
+    const { bucketManager } = await this.getSdkContext();
+
+    return new Promise((resolve, reject) => {
+      bucketManager.move(srcBucket, srcKey, destBucket, destKey, { force }, (err, _body, respInfo) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (!respInfo || respInfo.statusCode !== 200) {
+          reject(this.formatQiniuError('移动文件', { statusCode: respInfo?.statusCode }));
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  private async deleteFileIfExists(key: string): Promise<void> {
+    try {
+      await this.delFile(key);
+    } catch {
+      // 临时文件不存在时忽略
+    }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async getDirectUploadCredentials(key: string): Promise<{
@@ -315,7 +497,7 @@ export class QiniuService {
       401: '七牛云密钥认证失败，请检查管理端系统配置中的 AccessKey 和 SecretKey',
       403: '七牛云无权限执行此操作',
       404: '文件在七牛云中不存在',
-      612: '七牛云 AccessKey 不存在，请检查管理端系统配置',
+      612: '文件在七牛云中不存在，请确认 Bucket 与照片 URL 所属存储空间一致',
       631: '七牛云存储空间不存在，请检查管理端系统配置中的 Bucket',
     };
     return hints[statusCode];
