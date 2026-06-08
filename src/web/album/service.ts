@@ -324,13 +324,20 @@ export class AlbumService {
   }
 
   /**
-   * 分页查询所有照片（排除指定相册）
+   * 分页查询可绑定照片
+   * @param unboundOnly 为 true 时仅返回未绑定任何相册的照片；否则返回未加入当前相册的照片
    */
-  async getPhotosExcludingAlbum(albumId: number, page: number = 1, limit: number = 10, keyword?: string) {
+  async getPhotosExcludingAlbum(albumId: number, page: number = 1, limit: number = 10, keyword?: string, unboundOnly?: boolean) {
     // 确认相册存在
     await this.getAlbumDetail(albumId);
 
-    const query = this.photoRepository.createQueryBuilder('photo').leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId }).where('albumFilter.id IS NULL');
+    const query = this.photoRepository.createQueryBuilder('photo');
+
+    if (unboundOnly) {
+      query.leftJoin('photo.albums', 'album').where('album.id IS NULL');
+    } else {
+      query.leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId }).where('albumFilter.id IS NULL');
+    }
 
     // 如果有关键词，添加名称搜索条件
     if (keyword) {
@@ -344,7 +351,8 @@ export class AlbumService {
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(`查询排除相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`);
+    const scope = unboundOnly ? '未绑定任何相册' : `排除相册 ${albumId}`;
+    this.logger.log(`查询${scope}的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`);
 
     return {
       items,

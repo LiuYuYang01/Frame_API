@@ -203,8 +203,8 @@ export class AlbumController {
 
   @Get(':id/photos/exclude')
   @ApiOperation({
-    summary: '查询未绑定的照片',
-    description: '分页查询所有未绑定的照片，用于挑选未加入当前相册的内容',
+    summary: '查询可绑定照片',
+    description: '分页查询可绑定到相册的照片；默认排除当前相册已有照片，unbound_only=true 时仅返回未绑定任何相册的照片',
   })
   @ApiParam({
     name: 'id',
@@ -213,7 +213,7 @@ export class AlbumController {
     type: Number,
   })
   async getPhotosExclude(@Param('id', ParseIntPipe) id: number, @Query() query: AlbumPhotoQueryDto) {
-    const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit, query.keyword);
+    const result = await this.albumService.getPhotosExcludingAlbum(id, query.page, query.limit, query.keyword, query.unbound_only);
     const imageOptions = resolveImageOptions(query);
     const items = applyImageProcessingToPhotos(result.items, imageOptions);
 
