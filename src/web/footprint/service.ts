@@ -29,32 +29,35 @@ export class FootprintService {
   }
 
   /**
-   * 查询足迹列表（分页）
+   * 查询足迹列表（不传 page/limit 则返回全部，传则分页）
    */
   async getFootprintList(query: QueryFootprintDto) {
-    const { page = 1, limit = 10, keyword } = query;
+    const { page, limit, keyword } = query;
+    const shouldPaginate = page != null && limit != null;
 
-    // 使用 QueryBuilder 进行分页查询，按创建时间倒序
     const queryBuilder = this.footprintRepository
       .createQueryBuilder('footprint')
-      .orderBy('footprint.create_time', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .orderBy('footprint.create_time', 'DESC');
 
-    // 如果有关键词，添加标题或地址搜索条件
     if (keyword) {
       queryBuilder.where('(footprint.title LIKE :keyword OR footprint.address LIKE :keyword)', { keyword: `%${keyword}%` });
     }
 
+    if (shouldPaginate) {
+      queryBuilder.skip((page - 1) * limit).take(limit);
+    }
+
     const [items, total] = await queryBuilder.getManyAndCount();
 
-    this.logger.log(`查询足迹列表成功，共 ${total} 条，当前第 ${page} 页`);
+    this.logger.log(
+      shouldPaginate ? `查询足迹列表成功，共 ${total} 条，当前第 ${page} 页` : `查询足迹列表成功，共 ${total} 条（全量）`,
+    );
 
     return {
       items,
       total,
-      page,
-      limit,
+      page: page ?? 1,
+      limit: limit ?? total,
     };
   }
 

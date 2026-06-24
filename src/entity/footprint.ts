@@ -17,6 +17,9 @@ export class Footprint {
   @Column({ nullable: true, comment: '位置坐标（经纬度，格式：lng,lat）' })
   position: string;
 
+  @Column({ nullable: true, comment: '封面图片URL' })
+  cover: string;
+
   @Column({ type: 'json', nullable: true, comment: '照片列表' })
   images: string[];
 

@@ -6,6 +6,7 @@ import { UpdateFootprintDto } from './dto/update_footprint';
 import { QueryFootprintDto } from './dto/query_footprint';
 import { Result } from '@/utils/response';
 import { Paging } from '@/utils/paging';
+import { Public } from '@/decorator/public';
 
 @ApiTags('足迹管理')
 @ApiBearerAuth('JWT-auth')
@@ -24,6 +25,7 @@ export class FootprintController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({
     summary: '获取足迹列表',
     description: '分页获取足迹列表，支持按标题或地址搜索',

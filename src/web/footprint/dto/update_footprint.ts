@@ -39,6 +39,15 @@ export class UpdateFootprintDto {
   position?: string;
 
   @ApiProperty({
+    description: '封面图片URL',
+    example: 'https://cdn.example.com/cover.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  cover?: string;
+
+  @ApiProperty({
     description: '照片列表',
     example: ['https://cdn.example.com/photo1.jpg', 'https://cdn.example.com/photo2.jpg'],
     required: false,

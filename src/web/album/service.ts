@@ -20,21 +20,22 @@ export class AlbumService {
   ) {}
 
   /**
-   * 查询相册列表（分页）- 公开接口，支持随机排序
+   * 查询相册列表（不传 page/limit 则返回全部）- 公开接口，支持随机排序
    */
   async getAlbumListPublic(query: QueryAlbumDto) {
-    const { page = 1, limit = 10, keyword } = query;
+    const { page, limit, keyword } = query;
+    const shouldPaginate = page != null && limit != null;
 
-    // 使用 QueryBuilder 进行分页查询，支持随机排序
     const queryBuilder = this.albumRepository
       .createQueryBuilder('album')
-      .orderBy('RAND()')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .orderBy('RAND()');
 
-    // 如果有关键词，添加名称搜索条件
     if (keyword) {
       queryBuilder.where('album.name LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    if (shouldPaginate) {
+      queryBuilder.skip((page - 1) * limit).take(limit);
     }
 
     const [items, total] = await queryBuilder.getManyAndCount();
@@ -51,32 +52,37 @@ export class AlbumService {
       }),
     );
 
-    this.logger.log(`查询相册列表成功（公开接口），共 ${total} 条，当前第 ${page} 页`);
+    this.logger.log(
+      shouldPaginate
+        ? `查询相册列表成功，共 ${total} 条，当前第 ${page} 页`
+        : `查询相册列表成功，共 ${total} 条（全量）`,
+    );
 
     return {
       items: itemsWithCount,
       total,
-      page,
-      limit,
+      page: page ?? 1,
+      limit: limit ?? total,
     };
   }
 
   /**
-   * 查询相册列表（分页）- 管理接口，按创建时间排序
+   * 查询相册列表（不传 page/limit 则返回全部）- 管理接口，按创建时间排序
    */
   async getAlbumList(query: QueryAlbumDto) {
-    const { page = 1, limit = 10, keyword } = query;
+    const { page, limit, keyword } = query;
+    const shouldPaginate = page != null && limit != null;
 
-    // 使用 QueryBuilder 进行分页查询，按创建时间倒序
     const queryBuilder = this.albumRepository
       .createQueryBuilder('album')
-      .orderBy('album.create_time', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .orderBy('album.create_time', 'DESC');
 
-    // 如果有关键词，添加名称搜索条件
     if (keyword) {
       queryBuilder.where('album.name LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    if (shouldPaginate) {
+      queryBuilder.skip((page - 1) * limit).take(limit);
     }
 
     const [items, total] = await queryBuilder.getManyAndCount();
@@ -93,13 +99,15 @@ export class AlbumService {
       }),
     );
 
-    this.logger.log(`查询相册列表成功，共 ${total} 条，当前第 ${page} 页`);
+    this.logger.log(
+      shouldPaginate ? `查询相册列表成功，共 ${total} 条，当前第 ${page} 页` : `查询相册列表成功，共 ${total} 条（全量）`,
+    );
 
     return {
       items: itemsWithCount,
       total,
-      page,
-      limit,
+      page: page ?? 1,
+      limit: limit ?? total,
     };
   }
 
@@ -226,108 +234,130 @@ export class AlbumService {
   }
 
   /**
-   * 分页查询相册中的照片 - 公开接口，支持随机排序
+   * 查询相册中的照片（不传 page/limit 则返回全部）- 公开接口，支持随机排序
    * @param albumId 相册ID，为0时表示查询所有照片
    */
-  async getPhotosPaginatedPublic(albumId: number, page: number = 1, limit: number = 10) {
+  async getPhotosPaginatedPublic(albumId: number, page?: number, limit?: number) {
+    const shouldPaginate = page != null && limit != null;
+
     // 如果 albumId 为 0，查询所有照片
     if (albumId === 0) {
-      const query = this.photoRepository
-        .createQueryBuilder('photo')
-        .orderBy('RAND()')
-        .skip((page - 1) * limit)
-        .take(limit);
+      const query = this.photoRepository.createQueryBuilder('photo').orderBy('RAND()');
+
+      if (shouldPaginate) {
+        query.skip((page - 1) * limit).take(limit);
+      }
 
       const [items, total] = await query.getManyAndCount();
 
-      this.logger.log(`查询所有照片成功（公开接口），共 ${total} 张，当前第 ${page} 页`);
+      this.logger.log(
+        shouldPaginate
+          ? `查询所有照片成功，共 ${total} 张，当前第 ${page} 页`
+          : `查询所有照片成功，共 ${total} 张（全量）`,
+      );
 
       return {
         items,
         total,
-        page,
-        limit,
+        page: page ?? 1,
+        limit: limit ?? total,
       };
     }
 
     // 先验证相册是否存在
     await this.getAlbumDetail(albumId);
 
-    // 使用 QueryBuilder 进行分页查询
     const query = this.photoRepository
       .createQueryBuilder('photo')
       .innerJoin('photo.albums', 'album')
       .where('album.id = :albumId', { albumId })
-      .orderBy('RAND()')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .orderBy('RAND()');
+
+    if (shouldPaginate) {
+      query.skip((page - 1) * limit).take(limit);
+    }
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(`查询相册 ${albumId} 的照片成功（公开接口），共 ${total} 张，当前第 ${page} 页`);
+    this.logger.log(
+      shouldPaginate
+        ? `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`
+        : `查询相册 ${albumId} 的照片成功，共 ${total} 张（全量）`,
+    );
 
     return {
       items,
       total,
-      page,
-      limit,
+      page: page ?? 1,
+      limit: limit ?? total,
     };
   }
 
   /**
-   * 分页查询相册中的照片 - 管理接口，按创建时间排序
+   * 查询相册中的照片（不传 page/limit 则返回全部）- 管理接口，按创建时间排序
    * @param albumId 相册ID，为0时表示查询所有照片
    */
-  async getPhotosPaginated(albumId: number, page: number = 1, limit: number = 10) {
+  async getPhotosPaginated(albumId: number, page?: number, limit?: number) {
+    const shouldPaginate = page != null && limit != null;
+
     // 如果 albumId 为 0，查询所有照片
     if (albumId === 0) {
-      const query = this.photoRepository
-        .createQueryBuilder('photo')
-        .orderBy('photo.create_time', 'DESC')
-        .skip((page - 1) * limit)
-        .take(limit);
+      const query = this.photoRepository.createQueryBuilder('photo').orderBy('photo.create_time', 'DESC');
+
+      if (shouldPaginate) {
+        query.skip((page - 1) * limit).take(limit);
+      }
 
       const [items, total] = await query.getManyAndCount();
 
-      this.logger.log(`查询所有照片成功，共 ${total} 张，当前第 ${page} 页`);
+      this.logger.log(
+        shouldPaginate ? `查询所有照片成功，共 ${total} 张，当前第 ${page} 页` : `查询所有照片成功，共 ${total} 张（全量）`,
+      );
 
       return {
         items,
         total,
-        page,
-        limit,
+        page: page ?? 1,
+        limit: limit ?? total,
       };
     }
 
     // 先验证相册是否存在
     await this.getAlbumDetail(albumId);
 
-    // 使用 QueryBuilder 进行分页查询
     const query = this.photoRepository
       .createQueryBuilder('photo')
       .innerJoin('photo.albums', 'album')
       .where('album.id = :albumId', { albumId })
-      .orderBy('photo.create_time', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .orderBy('photo.create_time', 'DESC');
+
+    if (shouldPaginate) {
+      query.skip((page - 1) * limit).take(limit);
+    }
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(`查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`);
+    this.logger.log(
+      shouldPaginate
+        ? `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`
+        : `查询相册 ${albumId} 的照片成功，共 ${total} 张（全量）`,
+    );
 
     return {
       items,
       total,
-      page,
-      limit,
+      page: page ?? 1,
+      limit: limit ?? total,
     };
   }
 
   /**
-   * 分页查询可绑定照片
+   * 查询可绑定照片（不传 page/limit 则返回全部）
    * @param unboundOnly 为 true 时仅返回未绑定任何相册的照片；否则返回未加入当前相册的照片
    */
-  async getPhotosExcludingAlbum(albumId: number, page: number = 1, limit: number = 10, keyword?: string, unboundOnly?: boolean) {
+  async getPhotosExcludingAlbum(albumId: number, page?: number, limit?: number, keyword?: string, unboundOnly?: boolean) {
+    const shouldPaginate = page != null && limit != null;
+
     // 确认相册存在
     await this.getAlbumDetail(albumId);
 
@@ -339,26 +369,30 @@ export class AlbumService {
       query.leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId }).where('albumFilter.id IS NULL');
     }
 
-    // 如果有关键词，添加名称搜索条件
     if (keyword) {
       query.andWhere('photo.name LIKE :keyword', { keyword: `%${keyword}%` });
     }
 
-    query
-      .orderBy('photo.create_time', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+    query.orderBy('photo.create_time', 'DESC');
+
+    if (shouldPaginate) {
+      query.skip((page - 1) * limit).take(limit);
+    }
 
     const [items, total] = await query.getManyAndCount();
 
     const scope = unboundOnly ? '未绑定任何相册' : `排除相册 ${albumId}`;
-    this.logger.log(`查询${scope}的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`);
+    this.logger.log(
+      shouldPaginate
+        ? `查询${scope}的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`
+        : `查询${scope}的照片成功，共 ${total} 张（全量）${keyword ? `，关键词: ${keyword}` : ''}`,
+    );
 
     return {
       items,
       total,
-      page,
-      limit,
+      page: page ?? 1,
+      limit: limit ?? total,
     };
   }
 }

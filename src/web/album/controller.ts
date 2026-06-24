@@ -110,7 +110,7 @@ export class AlbumController {
   @Get('/public/list')
   @Public()
   @ApiOperation({
-    summary: '获取相册列表（公开接口）',
+    summary: '获取相册列表',
     description: '分页获取相册列表，支持按名称搜索，支持随机排序',
   })
   async listPublic(@Query() query: QueryAlbumDto) {
@@ -150,7 +150,7 @@ export class AlbumController {
   @Get('/public/:id/photos')
   @Public()
   @ApiOperation({
-    summary: '分页查询相册中的照片（公开接口）',
+    summary: '分页查询相册中的照片',
     description: '分页查询指定相册中的所有照片，当id为0时查询所有照片，支持随机排序',
   })
   @ApiParam({
