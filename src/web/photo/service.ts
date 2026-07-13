@@ -6,6 +6,7 @@ import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
 import { SlimPhotoDto, SlimPhotoQueryDto } from './dto/slim_photo';
 import { QiniuService } from '@/web/upload/service';
+import { AlbumService } from '@/web/album/service';
 import { CustomException } from '@/execption/global_exception_handler';
 import { stripImageProcessing } from '@/utils/image';
 import {
@@ -57,6 +58,7 @@ export class PhotoService {
     @InjectRepository(Photo)
     private readonly photoRepository: Repository<Photo>,
     private readonly qiniuService: QiniuService,
+    private readonly albumService: AlbumService,
   ) {}
 
   /**
@@ -90,7 +92,18 @@ export class PhotoService {
   async updatePhoto(id: number, data: UpdatePhotoDto) {
     const photo = await this.getPhotoDetail(id);
 
-    Object.assign(photo, data);
+    if (data.is_featured !== undefined) {
+      const featuredAlbum = await this.albumService.getOrCreateFeaturedAlbum();
+      if (data.is_featured) {
+        await this.albumService.addPhotos(featuredAlbum.id, [id]);
+      } else {
+        await this.albumService.delPhotos(featuredAlbum.id, [id]);
+      }
+      photo.is_featured = data.is_featured;
+    }
+
+    const { is_featured: _isFeatured, ...rest } = data;
+    Object.assign(photo, rest);
     const result = await this.photoRepository.save(photo);
 
     this.logger.log(`更新照片成功: ${result.id} - ${result.name}`);

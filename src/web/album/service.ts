@@ -7,6 +7,7 @@ import { UpdateAlbumDto } from './dto/update_album';
 import { QueryAlbumDto } from './dto/query_album';
 import { CreateAlbumDto } from './dto/create_album';
 import { CustomException } from '@/execption/global_exception_handler';
+import { FEATURED_ALBUM_NAME } from '@/constants/featured';
 
 @Injectable()
 export class AlbumService {
@@ -25,17 +26,25 @@ export class AlbumService {
   async getAlbumListPublic(query: QueryAlbumDto) {
     const { page, limit, keyword } = query;
     const shouldPaginate = page != null && limit != null;
+    const pageNum = page ?? 1;
+
+    const featuredAlbum = await this.albumRepository.findOne({ where: { name: FEATURED_ALBUM_NAME } });
+    let featuredItem: Awaited<ReturnType<typeof this.findOneWithCount>> | null = null;
+    if (featuredAlbum && (!keyword || featuredAlbum.name.includes(keyword))) {
+      featuredItem = await this.findOneWithCount(featuredAlbum.id);
+    }
 
     const queryBuilder = this.albumRepository
       .createQueryBuilder('album')
+      .where('album.name != :featuredName', { featuredName: FEATURED_ALBUM_NAME })
       .orderBy('RAND()');
 
     if (keyword) {
-      queryBuilder.where('album.name LIKE :keyword', { keyword: `%${keyword}%` });
+      queryBuilder.andWhere('album.name LIKE :keyword', { keyword: `%${keyword}%` });
     }
 
     if (shouldPaginate) {
-      queryBuilder.skip((page - 1) * limit).take(limit);
+      queryBuilder.skip((pageNum - 1) * limit).take(limit);
     }
 
     const [items, total] = await queryBuilder.getManyAndCount();
@@ -52,17 +61,20 @@ export class AlbumService {
       }),
     );
 
+    const resultItems = featuredItem && pageNum === 1 ? [featuredItem, ...itemsWithCount] : itemsWithCount;
+    const resultTotal = total + (featuredItem ? 1 : 0);
+
     this.logger.log(
       shouldPaginate
-        ? `查询相册列表成功，共 ${total} 条，当前第 ${page} 页`
-        : `查询相册列表成功，共 ${total} 条（全量）`,
+        ? `查询相册列表成功，共 ${resultTotal} 条，当前第 ${pageNum} 页`
+        : `查询相册列表成功，共 ${resultTotal} 条（全量）`,
     );
 
     return {
-      items: itemsWithCount,
-      total,
-      page: page ?? 1,
-      limit: limit ?? total,
+      items: resultItems,
+      total: resultTotal,
+      page: pageNum,
+      limit: limit ?? resultTotal,
     };
   }
 
@@ -199,6 +211,22 @@ export class AlbumService {
   }
 
   /**
+   * 获取或创建收藏相册
+   */
+  async getOrCreateFeaturedAlbum() {
+    let album = await this.albumRepository.findOne({ where: { name: FEATURED_ALBUM_NAME } });
+    if (!album) {
+      album = this.albumRepository.create({
+        name: FEATURED_ALBUM_NAME,
+        description: '收藏照片合集',
+      });
+      album = await this.albumRepository.save(album);
+      this.logger.log(`创建收藏相册: ${album.id}`);
+    }
+    return album;
+  }
+
+  /**
    * 向相册添加照片
    */
   async addPhotos(albumId: number, photoIds: number[]) {
@@ -235,6 +263,10 @@ export class AlbumService {
 
     await this.albumRepository.save(album);
     this.logger.log(`从相册 ${albumId} 移除 ${photoIds.length} 张照片成功`);
+
+    if (album.name === FEATURED_ALBUM_NAME) {
+      await this.photoRepository.update({ id: In(photoIds) }, { is_featured: false });
+    }
   }
 
   /**
