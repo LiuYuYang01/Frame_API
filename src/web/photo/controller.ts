@@ -5,8 +5,11 @@ import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
 import { DeletePhotoDto } from './dto/delete_photo';
 import { SlimPhotoDto, SlimPhotoQueryDto } from './dto/slim_photo';
+import { UnboundPhotoQueryDto } from './dto/unbound_photo_query';
 import { Result } from '@/utils/response';
 import { Public } from '@/decorator/public';
+import { Paging } from '@/utils/paging';
+import { applyImageProcessingToPhotos, resolveImageOptions } from '@/utils/image';
 
 @ApiTags('照片管理')
 @ApiBearerAuth('JWT-auth')
@@ -59,6 +62,26 @@ export class PhotoController {
   async delPhoto(@Body() data: DeletePhotoDto) {
     await this.photoService.delPhotos(data.ids);
     return Result.success('照片删除成功');
+  }
+
+  @Get('unbound')
+  @ApiOperation({
+    summary: '查询未绑定照片',
+    description: '分页查询未绑定任何相册的照片',
+  })
+  async getUnboundPhotos(@Query() query: UnboundPhotoQueryDto) {
+    const result = await this.photoService.getUnboundPhotos(query.page, query.limit, query.keyword);
+    const imageOptions = resolveImageOptions(query);
+    const items = applyImageProcessingToPhotos(result.items, imageOptions);
+
+    const pagingData = Paging.filter({
+      items,
+      total: result.total,
+      page: result.page,
+      size: result.limit,
+    });
+
+    return Result.success('查询未绑定照片成功', pagingData);
   }
 
   @Get('slim/preview')

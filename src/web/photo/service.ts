@@ -338,4 +338,43 @@ export class PhotoService {
     qb.orderBy('photo.id', 'ASC');
     return qb.getMany();
   }
+
+  /**
+   * 查询未绑定任何相册的照片（不传 page/limit 则返回全部）
+   */
+  async getUnboundPhotos(page?: number, limit?: number, keyword?: string) {
+    const shouldPaginate = page != null && limit != null;
+
+    const query = this.photoRepository.createQueryBuilder('photo').where(`
+      NOT EXISTS (
+        SELECT 1 FROM album_photo ap
+        WHERE ap.photo_id = photo.id
+      )
+    `);
+
+    if (keyword) {
+      query.andWhere('photo.name LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    query.orderBy('photo.create_time', 'DESC');
+
+    if (shouldPaginate) {
+      query.skip((page - 1) * limit).take(limit);
+    }
+
+    const [items, total] = await query.getManyAndCount();
+
+    this.logger.log(
+      shouldPaginate
+        ? `查询未绑定任何相册的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`
+        : `查询未绑定任何相册的照片成功，共 ${total} 张（全量）${keyword ? `，关键词: ${keyword}` : ''}`,
+    );
+
+    return {
+      items,
+      total,
+      page: page ?? 1,
+      limit: limit ?? total,
+    };
+  }
 }

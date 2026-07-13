@@ -188,7 +188,11 @@ export class AlbumService {
    * 删除相册
    */
   async delAlbum(id: number) {
-    const album = await this.getAlbumDetail(id);
+    const album = await this.findOneWithCount(id);
+
+    if (album.photo_count > 0) {
+      throw new CustomException(400, `相册内仍有 ${album.photo_count} 张绑定的照片，请先解除绑定后再删除`);
+    }
 
     await this.albumRepository.remove(album);
     this.logger.log(`删除相册成功: ${id}`);

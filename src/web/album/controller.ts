@@ -62,7 +62,7 @@ export class AlbumController {
   @Delete(':id')
   @ApiOperation({
     summary: '删除相册',
-    description: '删除相册并不会删除照片本身',
+    description: '仅允许删除没有绑定照片的相册，删除相册并不会删除照片本身',
   })
   @ApiParam({
     name: 'id',
