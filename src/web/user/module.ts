@@ -7,10 +7,12 @@ import { UserService } from './service';
 import { User } from '@/entity/user';
 import { JwtStrategy } from '@/strategy/jwt_config';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '@/strategy/jwt.constants';
+import { FileModule } from '@/web/upload/module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
+    FileModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: JWT_SECRET, // 使用统一的 JWT 密钥配置（与 JwtStrategy 中的 secretOrKey 必须一致）

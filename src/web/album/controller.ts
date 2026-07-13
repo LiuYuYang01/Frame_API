@@ -204,7 +204,7 @@ export class AlbumController {
   @Get(':id/photos/exclude')
   @ApiOperation({
     summary: '查询可绑定照片',
-    description: '分页查询可绑定到相册的照片；默认排除当前相册已有照片，unbound_only=true 时仅返回未绑定任何相册的照片',
+    description: '分页查询可绑定到相册的照片；默认返回未加入当前相册的照片，unbound_only=true 时仅返回未绑定任何相册的照片',
   })
   @ApiParam({
     name: 'id',

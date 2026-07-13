@@ -364,9 +364,19 @@ export class AlbumService {
     const query = this.photoRepository.createQueryBuilder('photo');
 
     if (unboundOnly) {
-      query.leftJoin('photo.albums', 'album').where('album.id IS NULL');
+      query.where(`
+        NOT EXISTS (
+          SELECT 1 FROM album_photo ap
+          WHERE ap.photo_id = photo.id
+        )
+      `);
     } else {
-      query.leftJoin('photo.albums', 'albumFilter', 'albumFilter.id = :albumId', { albumId }).where('albumFilter.id IS NULL');
+      query.where(`
+        NOT EXISTS (
+          SELECT 1 FROM album_photo ap
+          WHERE ap.photo_id = photo.id AND ap.album_id = :albumId
+        )
+      `, { albumId });
     }
 
     if (keyword) {
@@ -381,7 +391,7 @@ export class AlbumService {
 
     const [items, total] = await query.getManyAndCount();
 
-    const scope = unboundOnly ? '未绑定任何相册' : `排除相册 ${albumId}`;
+    const scope = unboundOnly ? '未绑定任何相册' : `未加入相册 ${albumId}`;
     this.logger.log(
       shouldPaginate
         ? `查询${scope}的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`

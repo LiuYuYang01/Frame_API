@@ -14,11 +14,11 @@ export class AlbumPhotoQueryDto extends IntersectionType(PageQueryBaseDto, Photo
   keyword?: string;
 
   @ApiPropertyOptional({
-    description: '仅查询未绑定任何相册的照片',
+    description: '为 true 时仅返回未绑定任何相册的照片；默认返回未加入当前相册的照片',
     example: false,
   })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => value === true || value === 'true' || value === 1 || value === '1')
   @IsBoolean()
   unbound_only?: boolean;
 }
