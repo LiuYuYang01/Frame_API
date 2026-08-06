@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Footprint } from '@/entity/footprint';
+import { Album } from '@/entity/album';
 import { CreateFootprintDto } from './dto/create_footprint';
 import { UpdateFootprintDto } from './dto/update_footprint';
 import { QueryFootprintDto } from './dto/query_footprint';
@@ -14,6 +15,8 @@ export class FootprintService {
   constructor(
     @InjectRepository(Footprint)
     private readonly footprintRepository: Repository<Footprint>,
+    @InjectRepository(Album)
+    private readonly albumRepository: Repository<Album>,
   ) {}
 
   /**
@@ -26,6 +29,28 @@ export class FootprintService {
     this.logger.log(`创建足迹成功: ${result.id} - ${result.title}`);
 
     return result;
+  }
+
+  /**
+   * 批量为足迹列表填充关联相册信息（相册名、封面）
+   */
+  private async enrichWithAlbum(items: Footprint[]) {
+    const albumIds = [...new Set(items.map((f) => f.album_id).filter((id): id is number => id != null))];
+    if (albumIds.length === 0) {
+      return items.map((footprint) => ({ ...footprint, album_name: null, album_cover: null }));
+    }
+
+    const albums = await this.albumRepository.find({ where: { id: In(albumIds) } });
+    const albumMap = new Map(albums.map((a) => [a.id, a]));
+
+    return items.map((footprint) => {
+      const album = footprint.album_id ? albumMap.get(footprint.album_id) : null;
+      return {
+        ...footprint,
+        album_name: album?.name || null,
+        album_cover: album?.cover || null,
+      };
+    });
   }
 
   /**
@@ -48,13 +73,14 @@ export class FootprintService {
     }
 
     const [items, total] = await queryBuilder.getManyAndCount();
+    const itemsWithAlbum = await this.enrichWithAlbum(items);
 
     this.logger.log(
       shouldPaginate ? `查询足迹列表成功，共 ${total} 条，当前第 ${page} 页` : `查询足迹列表成功，共 ${total} 条（全量）`,
     );
 
     return {
-      items,
+      items: itemsWithAlbum,
       total,
       page: page ?? 1,
       limit: limit ?? total,
@@ -73,28 +99,40 @@ export class FootprintService {
       throw new CustomException(404, `足迹 ID ${id} 不存在`);
     }
 
-    return footprint;
+    const [enriched] = await this.enrichWithAlbum([footprint]);
+    return enriched;
   }
 
   /**
    * 更新足迹
    */
   async updateFootprint(id: number, data: UpdateFootprintDto) {
-    const footprint = await this.getFootprintDetail(id);
+    // 查询原始实体用于更新（避免 enriched 对象含非实体字段干扰 save）
+    const footprint = await this.footprintRepository.findOne({ where: { id } });
+    if (!footprint) {
+      throw new CustomException(404, `足迹 ID ${id} 不存在`);
+    }
 
     Object.assign(footprint, data);
     const result = await this.footprintRepository.save(footprint);
 
     this.logger.log(`更新足迹成功: ${result.id} - ${result.title}`);
 
-    return result;
+    const [enriched] = await this.enrichWithAlbum([result]);
+    return enriched;
   }
 
   /**
    * 删除足迹
    */
   async deleteFootprint(id: number) {
-    const footprint = await this.getFootprintDetail(id);
+    const footprint = await this.footprintRepository.findOne({
+      where: { id },
+    });
+
+    if (!footprint) {
+      throw new CustomException(404, `足迹 ID ${id} 不存在`);
+    }
 
     await this.footprintRepository.remove(footprint);
     this.logger.log(`删除足迹成功: ${id}`);

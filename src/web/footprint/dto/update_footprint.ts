@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsInt } from 'class-validator';
 
 export class UpdateFootprintDto {
   @ApiProperty({
@@ -48,13 +48,11 @@ export class UpdateFootprintDto {
   cover?: string;
 
   @ApiProperty({
-    description: '照片列表',
-    example: ['https://cdn.example.com/photo1.jpg', 'https://cdn.example.com/photo2.jpg'],
+    description: '关联相册ID',
+    example: 1,
     required: false,
-    type: [String],
   })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  images?: string[];
+  @IsInt()
+  album_id?: number;
 }

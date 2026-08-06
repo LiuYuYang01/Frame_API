@@ -20,8 +20,8 @@ export class Footprint {
   @Column({ nullable: true, comment: '封面图片URL' })
   cover: string;
 
-  @Column({ type: 'json', nullable: true, comment: '照片列表' })
-  images: string[];
+  @Column({ nullable: true, comment: '关联相册ID' })
+  album_id: number;
 
   @Column({
     type: 'datetime',
