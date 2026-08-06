@@ -42,10 +42,9 @@ export class FileController {
     }
   }
 
-  private assertObjectKeyMatchesHash(hash: string, fileName: string, key: string): void {
-    const expectedKey = this.qiniuService.buildObjectKey(hash, fileName);
-    if (key !== expectedKey) {
-      throw new CustomException(400, '文件 key 与 hash 不匹配');
+  private assertObjectKeyValid(fileName: string, key: string): void {
+    if (!this.qiniuService.isValidObjectKey(fileName, key)) {
+      throw new CustomException(400, '文件 key 格式无效');
     }
   }
 
@@ -71,7 +70,7 @@ export class FileController {
       });
     }
 
-    const key = this.qiniuService.buildObjectKey(body.hash, body.fileName);
+    const key = this.qiniuService.buildObjectKey(body.fileName);
     const credentials = await this.qiniuService.getDirectUploadCredentials(key);
 
     return Result.success('获取上传凭证成功', {
@@ -91,7 +90,7 @@ export class FileController {
   async confirmUpload(@Body() body: ConfirmUploadDto) {
     this.validateImageFile(body.fileName, body.type);
     await this.validateAlbumId(body.albumId);
-    this.assertObjectKeyMatchesHash(body.hash, body.fileName, body.key);
+    this.assertObjectKeyValid(body.fileName, body.key);
 
     const existingPhoto = await this.photoService.findByHash(body.hash);
     if (existingPhoto) {
@@ -237,20 +236,18 @@ export class FileController {
   }
 
   private async processFile(file: Express.Multer.File, tempDir: string): Promise<{ photo: Photo; isNew: boolean }> {
-    // 计算文件哈希值（使用 MD5）
+    // 计算文件哈希值（使用 MD5，用于秒传去重）
     const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
 
-    // 使用哈希值作为文件名
-    const ext = path.extname(file.originalname);
-    const key = `${fileHash}${ext}`;
-    const url = await this.qiniuService.getPublicDownloadUrl(key);
-
-    // 如果数据库已存在相同 URL，则直接复用
-    const existingPhoto = await this.photoService.findByUrl(url);
+    const existingPhoto = await this.photoService.findByHash(fileHash);
     if (existingPhoto) {
       this.logger.log(`文件已存在，跳过上传：${existingPhoto.id} - ${existingPhoto.url}`);
       return { photo: existingPhoto, isNew: false };
     }
+
+    // 使用 10 位随机值作为对象名
+    const key = this.qiniuService.buildObjectKey(file.originalname);
+    const url = await this.qiniuService.getPublicDownloadUrl(key);
 
     const tempFilePath = path.join(tempDir, key);
     await fs.promises.writeFile(tempFilePath, file.buffer);

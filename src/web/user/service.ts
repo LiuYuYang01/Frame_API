@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { User } from '@/entity/user';
@@ -122,8 +121,8 @@ export class UserService {
       throw new CustomException(400, '用户不存在');
     }
 
-    const hash = crypto.createHash('md5').update(file.buffer).digest('hex');
-    const key = `avatar/${userId}/${hash}${ext}`;
+    const randomName = this.qiniuService.generateRandomObjectName();
+    const key = `avatar/${userId}/${randomName}${ext}`;
     const url = await this.qiniuService.getPublicDownloadUrl(key);
 
     const tempDir = path.join(process.cwd(), 'temp');

@@ -11,6 +11,7 @@ import {
 import { stripImageProcessing } from '@/utils/image';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 
 interface QiniuSdkContext {
   qiniuConfig: QiniuConfig;
@@ -94,8 +95,7 @@ export class QiniuService {
     const { qiniuConfig, mac, config } = await this.getSdkContext();
 
     if (!key) {
-      const ext = path.extname(localFile);
-      key = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+      key = this.buildObjectKey(localFile);
     }
 
     const token = this.createUploadToken(mac, qiniuConfig.bucket, key);
@@ -329,9 +329,31 @@ export class QiniuService {
     };
   }
 
-  buildObjectKey(hash: string, fileName: string): string {
+  /** 生成 10 位随机对象名（小写字母+数字） */
+  generateRandomObjectName(length = 10): string {
+    const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
+    const bytes = crypto.randomBytes(length);
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars[bytes[i] % chars.length];
+    }
+    return result;
+  }
+
+  /** 对象 key：10 位随机值 + 原扩展名 */
+  buildObjectKey(fileName: string): string {
     const ext = path.extname(fileName).toLowerCase();
-    return `${hash}${ext}`;
+    return `${this.generateRandomObjectName()}${ext}`;
+  }
+
+  /** 校验对象 key 是否为「10 位随机名 + 与 fileName 一致的扩展名」 */
+  isValidObjectKey(fileName: string, key: string): boolean {
+    const ext = path.extname(fileName).toLowerCase();
+    if (!ext || path.extname(key).toLowerCase() !== ext) {
+      return false;
+    }
+    const baseName = path.basename(key, path.extname(key));
+    return /^[0-9a-z]{10}$/.test(baseName);
   }
 
   async getImageInfo(url: string): Promise<{
@@ -369,8 +391,7 @@ export class QiniuService {
     const { qiniuConfig, mac, config } = await this.getSdkContext();
 
     if (!key) {
-      const ext = path.extname(localFile);
-      key = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+      key = this.buildObjectKey(localFile);
     }
 
     const token = this.createUploadToken(mac, qiniuConfig.bucket, key);
