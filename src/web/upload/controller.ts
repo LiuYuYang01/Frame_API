@@ -107,7 +107,7 @@ export class FileController {
     }
 
     const photo = await this.photoService.createPhoto({
-      name: body.hash,
+      name: path.basename(body.key, path.extname(body.key)),
       url,
       size: body.size,
       width: body.width || 0,
@@ -267,15 +267,15 @@ export class FileController {
     const imageInfo = await this.qiniuService.getImageInfo(url);
 
     // 创建照片记录
-    // 注意：使用 fileHash（MD5）而不是 uploadResult.hash（七牛云etag），确保秒传时能正确匹配
+    // hash 仍用 MD5 保证秒传；name 存短对象名（不含扩展名）
     const photo = await this.photoService.createPhoto({
-      name: fileHash,
+      name: path.basename(key, path.extname(key)),
       url: url,
       size: fileInfo.fsize,
       width: imageInfo?.width || 0,
       height: imageInfo?.height || 0,
       type: fileInfo.mimeType,
-      hash: fileHash, // 使用 MD5 hash，与客户端计算的一致
+      hash: fileHash,
     });
 
     return { photo, isNew: true };
@@ -340,7 +340,6 @@ export class FileController {
 
     // 如果上传完成，创建照片记录
     if (result.completed && result.key && result.hash) {
-      const ext = path.extname(fileName);
       const finalKey = key || result.key;
       const url = await this.qiniuService.getPublicDownloadUrl(finalKey);
 
@@ -360,15 +359,15 @@ export class FileController {
         const fileInfo = await this.qiniuService.getFileInfo(finalKey);
         const imageInfo = await this.qiniuService.getImageInfo(url);
 
-        // 创建照片记录，使用客户端传入的hash（SHA256）
+        // 创建照片记录：name 用短对象名，hash 用于秒传
         photo = await this.photoService.createPhoto({
-          name: fileName.replace(ext, ''),
+          name: path.basename(finalKey, path.extname(finalKey)),
           url: url,
           size: fileInfo.fsize,
           width: imageInfo?.width || 0,
           height: imageInfo?.height || 0,
           type: fileInfo.mimeType,
-          hash, // 使用客户端传入的 SHA256 hash
+          hash,
         });
       }
 
