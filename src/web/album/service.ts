@@ -270,7 +270,8 @@ export class AlbumService {
   }
 
   /**
-   * 查询相册中的照片（不传 page/limit 则返回全部）- 公开接口，支持随机排序
+   * 查询相册中的照片（不传 page/limit 则返回全部）- 公开接口
+   * albumId 为 0 时查询所有照片，按创建时间倒序（便于时间线分页懒加载，避免随机排序导致翻页重复）
    * @param albumId 相册ID，为0时表示查询所有照片
    */
   async getPhotosPaginatedPublic(albumId: number, page?: number, limit?: number) {
@@ -278,7 +279,11 @@ export class AlbumService {
 
     // 如果 albumId 为 0，查询所有照片
     if (albumId === 0) {
-      const query = this.photoRepository.createQueryBuilder('photo').orderBy('RAND()');
+      // 用 id 作为次级排序键，避免 create_time 相同时分页跨页重复
+      const query = this.photoRepository
+        .createQueryBuilder('photo')
+        .orderBy('photo.create_time', 'DESC')
+        .addOrderBy('photo.id', 'DESC');
 
       if (shouldPaginate) {
         query.skip((page - 1) * limit).take(limit);
@@ -338,7 +343,11 @@ export class AlbumService {
 
     // 如果 albumId 为 0，查询所有照片
     if (albumId === 0) {
-      const query = this.photoRepository.createQueryBuilder('photo').orderBy('photo.create_time', 'DESC');
+      // 用 id 作为次级排序键，避免 create_time 相同时分页跨页重复
+      const query = this.photoRepository
+        .createQueryBuilder('photo')
+        .orderBy('photo.create_time', 'DESC')
+        .addOrderBy('photo.id', 'DESC');
 
       if (shouldPaginate) {
         query.skip((page - 1) * limit).take(limit);
@@ -365,7 +374,8 @@ export class AlbumService {
       .createQueryBuilder('photo')
       .innerJoin('photo.albums', 'album')
       .where('album.id = :albumId', { albumId })
-      .orderBy('photo.create_time', 'DESC');
+      .orderBy('photo.create_time', 'DESC')
+      .addOrderBy('photo.id', 'DESC');
 
     if (shouldPaginate) {
       query.skip((page - 1) * limit).take(limit);
