@@ -2,12 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as qiniu from 'qiniu';
 import { QiniuConfig, getQiniuUploadUrl } from './config';
 import { EnvConfigService } from '@/web/env_config/service';
-import {
-  DEFAULT_SLIM_MAX_LONG_EDGE,
-  DEFAULT_SLIM_QUALITY,
-  PFOP_MAX_WAIT_MS,
-  PFOP_POLL_INTERVAL_MS,
-} from '@/constants/image_slim';
+import { DEFAULT_SLIM_MAX_LONG_EDGE, DEFAULT_SLIM_QUALITY, PFOP_MAX_WAIT_MS, PFOP_POLL_INTERVAL_MS } from '@/constants/image_slim';
 import { stripImageProcessing } from '@/utils/image';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -161,10 +156,7 @@ export class QiniuService {
     return `${key}.frame.slim.tmp`;
   }
 
-  async slimImageByPfop(
-    key: string,
-    options: SlimImageOptions = {},
-  ): Promise<{ fsize: number; hash: string; mimeType: string }> {
+  async slimImageByPfop(key: string, options: SlimImageOptions = {}): Promise<{ fsize: number; hash: string; mimeType: string }> {
     const maxLongEdge = options.maxLongEdge ?? DEFAULT_SLIM_MAX_LONG_EDGE;
     const quality = options.quality ?? DEFAULT_SLIM_QUALITY;
     const pipeline = options.pipeline ?? '';
@@ -172,9 +164,7 @@ export class QiniuService {
     const bucket = qiniuConfig.bucket;
     const tempKey = this.buildTempSlimKey(key);
     const saveasEntry = qiniu.util.urlsafeBase64Encode(`${bucket}:${tempKey}`);
-    const fops = [
-      `imageMogr2/auto-orient/thumbnail/${maxLongEdge}x${maxLongEdge}>/strip/quality/${quality}/format/jpg|saveas/${saveasEntry}`,
-    ];
+    const fops = [`imageMogr2/auto-orient/thumbnail/${maxLongEdge}x${maxLongEdge}>/strip/quality/${quality}/format/jpg|saveas/${saveasEntry}`];
 
     await this.deleteFileIfExists(tempKey);
 
@@ -197,13 +187,7 @@ export class QiniuService {
     };
   }
 
-  private async runPfop(
-    opManager: qiniu.fop.OperationManager,
-    bucket: string,
-    key: string,
-    fops: string[],
-    pipeline: string,
-  ): Promise<{ persistentId: string }> {
+  private async runPfop(opManager: qiniu.fop.OperationManager, bucket: string, key: string, fops: string[], pipeline: string): Promise<{ persistentId: string }> {
     return new Promise((resolve, reject) => {
       opManager.pfop(bucket, key, fops, pipeline, null, (err, body, respInfo) => {
         if (err) {
@@ -278,13 +262,7 @@ export class QiniuService {
     });
   }
 
-  async moveFile(
-    srcBucket: string,
-    srcKey: string,
-    destBucket: string,
-    destKey: string,
-    force = false,
-  ): Promise<void> {
+  async moveFile(srcBucket: string, srcKey: string, destBucket: string, destKey: string, force = false): Promise<void> {
     const { bucketManager } = await this.getSdkContext();
 
     return new Promise((resolve, reject) => {
@@ -432,7 +410,9 @@ export class QiniuService {
 
     let finalKey = key;
     if (!finalKey || finalKey.trim() === '') {
-      finalKey = `${uploadId}.tmp`;
+      finalKey = this.buildObjectKey(`upload${path.extname(key || '.jpg')}`);
+    } else if (!/^[0-9a-z]{10}\.[a-z0-9]+$/.test(finalKey)) {
+      finalKey = this.buildObjectKey(finalKey);
     }
 
     const uploadedChunks: number[] = [];
@@ -482,10 +462,7 @@ export class QiniuService {
     };
   }
 
-  private formatQiniuError(
-    action: string,
-    options: { err?: Error; statusCode?: number; respBody?: unknown },
-  ): Error {
+  private formatQiniuError(action: string, options: { err?: Error; statusCode?: number; respBody?: unknown }): Error {
     const { err, statusCode, respBody } = options;
 
     if (err?.message) {

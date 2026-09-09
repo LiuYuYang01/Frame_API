@@ -60,9 +60,7 @@ export class FootprintService {
     const { page, limit, keyword } = query;
     const shouldPaginate = page != null && limit != null;
 
-    const queryBuilder = this.footprintRepository
-      .createQueryBuilder('footprint')
-      .orderBy('footprint.create_time', 'DESC');
+    const queryBuilder = this.footprintRepository.createQueryBuilder('footprint').orderBy('footprint.create_time', 'DESC');
 
     if (keyword) {
       queryBuilder.where('(footprint.title LIKE :keyword OR footprint.address LIKE :keyword)', { keyword: `%${keyword}%` });
@@ -75,9 +73,7 @@ export class FootprintService {
     const [items, total] = await queryBuilder.getManyAndCount();
     const itemsWithAlbum = await this.enrichWithAlbum(items);
 
-    this.logger.log(
-      shouldPaginate ? `查询足迹列表成功，共 ${total} 条，当前第 ${page} 页` : `查询足迹列表成功，共 ${total} 条（全量）`,
-    );
+    this.logger.log(shouldPaginate ? `查询足迹列表成功，共 ${total} 条，当前第 ${page} 页` : `查询足迹列表成功，共 ${total} 条（全量）`);
 
     return {
       items: itemsWithAlbum,

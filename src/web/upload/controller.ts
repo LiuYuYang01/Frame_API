@@ -340,7 +340,7 @@ export class FileController {
 
     // 如果上传完成，创建照片记录
     if (result.completed && result.key && result.hash) {
-      const finalKey = key || result.key;
+      const finalKey = result.key;
       const url = await this.qiniuService.getPublicDownloadUrl(finalKey);
 
       // 检查是否已存在（使用客户端传入的hash进行秒传检查）

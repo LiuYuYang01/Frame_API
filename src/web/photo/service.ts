@@ -9,11 +9,7 @@ import { QiniuService } from '@/web/upload/service';
 import { AlbumService } from '@/web/album/service';
 import { CustomException } from '@/execption/global_exception_handler';
 import { stripImageProcessing } from '@/utils/image';
-import {
-  DEFAULT_SLIM_MAX_LONG_EDGE,
-  DEFAULT_SLIM_MIN_SIZE_BYTES,
-  DEFAULT_SLIM_QUALITY,
-} from '@/constants/image_slim';
+import { DEFAULT_SLIM_MAX_LONG_EDGE, DEFAULT_SLIM_MIN_SIZE_BYTES, DEFAULT_SLIM_QUALITY } from '@/constants/image_slim';
 
 const SKIP_SLIM_MIME_TYPES = new Set(['image/gif']);
 
@@ -262,10 +258,7 @@ export class PhotoService {
           name: photo.name,
           status: 'skipped',
           beforeSize: photo.size,
-          error:
-            photo.size < minSizeBytes && !ignoreSizeThreshold
-              ? '文件体积未超过阈值'
-              : '不支持的图片类型',
+          error: photo.size < minSizeBytes && !ignoreSizeThreshold ? '文件体积未超过阈值' : '不支持的图片类型',
         });
         continue;
       }
@@ -377,11 +370,7 @@ export class PhotoService {
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(
-      shouldPaginate
-        ? `查询未绑定任何相册的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`
-        : `查询未绑定任何相册的照片成功，共 ${total} 张（全量）${keyword ? `，关键词: ${keyword}` : ''}`,
-    );
+    this.logger.log(shouldPaginate ? `查询未绑定任何相册的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}` : `查询未绑定任何相册的照片成功，共 ${total} 张（全量）${keyword ? `，关键词: ${keyword}` : ''}`);
 
     return {
       items,

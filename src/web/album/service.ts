@@ -34,10 +34,7 @@ export class AlbumService {
       featuredItem = await this.findOneWithCount(featuredAlbum.id);
     }
 
-    const queryBuilder = this.albumRepository
-      .createQueryBuilder('album')
-      .where('album.name != :featuredName', { featuredName: FEATURED_ALBUM_NAME })
-      .orderBy('RAND()');
+    const queryBuilder = this.albumRepository.createQueryBuilder('album').where('album.name != :featuredName', { featuredName: FEATURED_ALBUM_NAME }).orderBy('RAND()');
 
     if (keyword) {
       queryBuilder.andWhere('album.name LIKE :keyword', { keyword: `%${keyword}%` });
@@ -64,11 +61,7 @@ export class AlbumService {
     const resultItems = featuredItem && pageNum === 1 ? [featuredItem, ...itemsWithCount] : itemsWithCount;
     const resultTotal = total + (featuredItem ? 1 : 0);
 
-    this.logger.log(
-      shouldPaginate
-        ? `查询相册列表成功，共 ${resultTotal} 条，当前第 ${pageNum} 页`
-        : `查询相册列表成功，共 ${resultTotal} 条（全量）`,
-    );
+    this.logger.log(shouldPaginate ? `查询相册列表成功，共 ${resultTotal} 条，当前第 ${pageNum} 页` : `查询相册列表成功，共 ${resultTotal} 条（全量）`);
 
     return {
       items: resultItems,
@@ -85,9 +78,7 @@ export class AlbumService {
     const { page, limit, keyword } = query;
     const shouldPaginate = page != null && limit != null;
 
-    const queryBuilder = this.albumRepository
-      .createQueryBuilder('album')
-      .orderBy('album.create_time', 'DESC');
+    const queryBuilder = this.albumRepository.createQueryBuilder('album').orderBy('album.create_time', 'DESC');
 
     if (keyword) {
       queryBuilder.where('album.name LIKE :keyword', { keyword: `%${keyword}%` });
@@ -111,9 +102,7 @@ export class AlbumService {
       }),
     );
 
-    this.logger.log(
-      shouldPaginate ? `查询相册列表成功，共 ${total} 条，当前第 ${page} 页` : `查询相册列表成功，共 ${total} 条（全量）`,
-    );
+    this.logger.log(shouldPaginate ? `查询相册列表成功，共 ${total} 条，当前第 ${page} 页` : `查询相册列表成功，共 ${total} 条（全量）`);
 
     return {
       items: itemsWithCount,
@@ -286,11 +275,7 @@ export class AlbumService {
 
       const [items, total] = await query.getManyAndCount();
 
-      this.logger.log(
-        shouldPaginate
-          ? `查询所有照片成功，共 ${total} 张，当前第 ${page} 页`
-          : `查询所有照片成功，共 ${total} 张（全量）`,
-      );
+      this.logger.log(shouldPaginate ? `查询所有照片成功，共 ${total} 张，当前第 ${page} 页` : `查询所有照片成功，共 ${total} 张（全量）`);
 
       return {
         items,
@@ -303,11 +288,7 @@ export class AlbumService {
     // 先验证相册是否存在
     await this.getAlbumDetail(albumId);
 
-    const query = this.photoRepository
-      .createQueryBuilder('photo')
-      .innerJoin('photo.albums', 'album')
-      .where('album.id = :albumId', { albumId })
-      .orderBy('RAND()');
+    const query = this.photoRepository.createQueryBuilder('photo').innerJoin('photo.albums', 'album').where('album.id = :albumId', { albumId }).orderBy('RAND()');
 
     if (shouldPaginate) {
       query.skip((page - 1) * limit).take(limit);
@@ -315,11 +296,7 @@ export class AlbumService {
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(
-      shouldPaginate
-        ? `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`
-        : `查询相册 ${albumId} 的照片成功，共 ${total} 张（全量）`,
-    );
+    this.logger.log(shouldPaginate ? `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页` : `查询相册 ${albumId} 的照片成功，共 ${total} 张（全量）`);
 
     return {
       items,
@@ -346,9 +323,7 @@ export class AlbumService {
 
       const [items, total] = await query.getManyAndCount();
 
-      this.logger.log(
-        shouldPaginate ? `查询所有照片成功，共 ${total} 张，当前第 ${page} 页` : `查询所有照片成功，共 ${total} 张（全量）`,
-      );
+      this.logger.log(shouldPaginate ? `查询所有照片成功，共 ${total} 张，当前第 ${page} 页` : `查询所有照片成功，共 ${total} 张（全量）`);
 
       return {
         items,
@@ -361,11 +336,7 @@ export class AlbumService {
     // 先验证相册是否存在
     await this.getAlbumDetail(albumId);
 
-    const query = this.photoRepository
-      .createQueryBuilder('photo')
-      .innerJoin('photo.albums', 'album')
-      .where('album.id = :albumId', { albumId })
-      .orderBy('photo.create_time', 'DESC');
+    const query = this.photoRepository.createQueryBuilder('photo').innerJoin('photo.albums', 'album').where('album.id = :albumId', { albumId }).orderBy('photo.create_time', 'DESC');
 
     if (shouldPaginate) {
       query.skip((page - 1) * limit).take(limit);
@@ -373,11 +344,7 @@ export class AlbumService {
 
     const [items, total] = await query.getManyAndCount();
 
-    this.logger.log(
-      shouldPaginate
-        ? `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页`
-        : `查询相册 ${albumId} 的照片成功，共 ${total} 张（全量）`,
-    );
+    this.logger.log(shouldPaginate ? `查询相册 ${albumId} 的照片成功，共 ${total} 张，当前第 ${page} 页` : `查询相册 ${albumId} 的照片成功，共 ${total} 张（全量）`);
 
     return {
       items,
@@ -407,12 +374,15 @@ export class AlbumService {
         )
       `);
     } else {
-      query.where(`
+      query.where(
+        `
         NOT EXISTS (
           SELECT 1 FROM album_photo ap
           WHERE ap.photo_id = photo.id AND ap.album_id = :albumId
         )
-      `, { albumId });
+      `,
+        { albumId },
+      );
     }
 
     if (keyword) {
@@ -428,11 +398,7 @@ export class AlbumService {
     const [items, total] = await query.getManyAndCount();
 
     const scope = unboundOnly ? '未绑定任何相册' : `未加入相册 ${albumId}`;
-    this.logger.log(
-      shouldPaginate
-        ? `查询${scope}的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}`
-        : `查询${scope}的照片成功，共 ${total} 张（全量）${keyword ? `，关键词: ${keyword}` : ''}`,
-    );
+    this.logger.log(shouldPaginate ? `查询${scope}的照片成功，共 ${total} 张，当前第 ${page} 页${keyword ? `，关键词: ${keyword}` : ''}` : `查询${scope}的照片成功，共 ${total} 张（全量）${keyword ? `，关键词: ${keyword}` : ''}`);
 
     return {
       items,

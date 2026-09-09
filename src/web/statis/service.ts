@@ -74,14 +74,7 @@ export class StatisService {
     return `${y}${m}${d}`;
   }
 
-  private async callBaiduStatisticsApi(
-    metrics: string,
-    method: string,
-    additionalParams: string | null,
-    startDate?: string,
-    endDate?: string,
-    apiName = '百度统计',
-  ) {
+  private async callBaiduStatisticsApi(metrics: string, method: string, additionalParams: string | null, startDate?: string, endDate?: string, apiName = '百度统计') {
     const config = await this.envConfigService.getBaiduStatisConfigAsync();
 
     if (!config.access_token) {

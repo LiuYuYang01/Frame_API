@@ -13,7 +13,7 @@ import { CustomException } from '@/execption/global_exception_handler';
 @ApiTags('用户管理')
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   // 用户登录 - 公开接口，不需要 JWT 认证
   @Public()

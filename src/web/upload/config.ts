@@ -14,14 +14,7 @@ export interface QiniuStorageEnvValue {
   zone: string;
 }
 
-export const QINIU_ZONE_OPTIONS = [
-  'Zone_z0',
-  'Zone_cn_east_2',
-  'Zone_z1',
-  'Zone_z2',
-  'Zone_na0',
-  'Zone_as0',
-] as const;
+export const QINIU_ZONE_OPTIONS = ['Zone_z0', 'Zone_cn_east_2', 'Zone_z1', 'Zone_z2', 'Zone_na0', 'Zone_as0'] as const;
 
 export function normalizeQiniuDomain(domain: string): string {
   let value = domain.trim();

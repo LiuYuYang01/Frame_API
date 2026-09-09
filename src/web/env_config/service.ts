@@ -3,12 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EnvConfig } from '@/entity/env_config';
 import { CustomException } from '@/execption/global_exception_handler';
-import {
-  isValidQiniuZone,
-  mapEnvValueToQiniuConfig,
-  QiniuConfig,
-  QiniuStorageEnvValue,
-} from '@/web/upload/config';
+import { isValidQiniuZone, mapEnvValueToQiniuConfig, QiniuConfig, QiniuStorageEnvValue } from '@/web/upload/config';
 
 export interface BaiduStatisConfig {
   site_id: number;
@@ -22,7 +17,7 @@ export class EnvConfigService implements OnModuleInit {
   constructor(
     @InjectRepository(EnvConfig)
     private readonly envConfigRepository: Repository<EnvConfig>,
-  ) { }
+  ) {}
 
   async onModuleInit() {
     await this.ensureDefaultConfigs();

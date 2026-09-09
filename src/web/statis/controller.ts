@@ -29,11 +29,7 @@ export class StatisController {
   @ApiQuery({ name: 'type', required: true, example: 'overview' })
   @ApiQuery({ name: 'startDate', required: false, example: '20240101' })
   @ApiQuery({ name: 'endDate', required: false, example: '20240131' })
-  async getBaiduStatistics(
-    @Query('type') type: 'basic' | 'overview' | 'new-visitor' | 'basic-overview',
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
+  async getBaiduStatistics(@Query('type') type: 'basic' | 'overview' | 'new-visitor' | 'basic-overview', @Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
     const data = await this.statisService.getBaiduStatistics(type, startDate, endDate);
     return Result.success(`获取${type}类型统计数据成功`, data);
   }

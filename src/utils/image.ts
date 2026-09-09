@@ -89,10 +89,7 @@ export const resolveImageOptions = (query: ImageQueryParams): ImageProcessOption
   return null;
 };
 
-export const applyImageProcessingToPhoto = <T extends { url?: string }>(
-  photo: T,
-  options: ImageProcessOptions | null,
-): T & { original_url?: string } => {
+export const applyImageProcessingToPhoto = <T extends { url?: string }>(photo: T, options: ImageProcessOptions | null): T & { original_url?: string } => {
   if (!photo?.url) {
     return { ...photo };
   }
@@ -110,10 +107,7 @@ export const applyImageProcessingToPhoto = <T extends { url?: string }>(
   };
 };
 
-export const applyImageProcessingToPhotos = <T extends { url?: string }>(
-  photos: T[],
-  options: ImageProcessOptions | null,
-): Array<T & { original_url?: string }> => {
+export const applyImageProcessingToPhotos = <T extends { url?: string }>(photos: T[], options: ImageProcessOptions | null): Array<T & { original_url?: string }> => {
   if (!Array.isArray(photos) || photos.length === 0) {
     return photos;
   }
@@ -121,10 +115,7 @@ export const applyImageProcessingToPhotos = <T extends { url?: string }>(
   return photos.map((photo) => applyImageProcessingToPhoto(photo, options));
 };
 
-export const applyImageProcessingToCover = <T extends { cover?: string }>(
-  album: T,
-  options: ImageProcessOptions | null,
-): T & { original_cover?: string } => {
+export const applyImageProcessingToCover = <T extends { cover?: string }>(album: T, options: ImageProcessOptions | null): T & { original_cover?: string } => {
   if (!album?.cover) {
     return { ...album };
   }

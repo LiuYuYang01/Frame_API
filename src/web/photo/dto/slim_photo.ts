@@ -1,11 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ArrayMinSize, IsArray, IsInt, IsOptional, Max, Min, ValidateIf } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import {
-  DEFAULT_SLIM_MAX_LONG_EDGE,
-  DEFAULT_SLIM_MIN_SIZE_BYTES,
-  DEFAULT_SLIM_QUALITY,
-} from '@/constants/image_slim';
+import { DEFAULT_SLIM_MAX_LONG_EDGE, DEFAULT_SLIM_MIN_SIZE_BYTES, DEFAULT_SLIM_QUALITY } from '@/constants/image_slim';
 
 const transformQueryNumberArray = (value: unknown): number[] | undefined => {
   if (value === undefined || value === null || value === '') {
