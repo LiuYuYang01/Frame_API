@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, IsArray } from 'class-validator';
 
 export class CreatePhotoDto {
   @ApiProperty({ description: '图片名称', example: 'sunset.jpg' })
@@ -53,4 +53,15 @@ export class CreatePhotoDto {
   @IsOptional()
   @IsString()
   hash?: string;
+
+  @ApiProperty({
+    description: '标签数组',
+    example: ['日本', '东京'],
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }

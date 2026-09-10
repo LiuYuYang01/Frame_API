@@ -30,6 +30,9 @@ export class Photo {
   @Column({ comment: '文件哈希值（用于秒传）', nullable: true })
   hash?: string;
 
+  @Column({ type: 'simple-json', nullable: true, comment: '标签' })
+  tags?: string[];
+
   @Column({ comment: '是否收藏', default: false })
   is_featured: boolean;
 

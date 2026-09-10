@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
 
 export class UpdatePhotoDto {
   @ApiProperty({
@@ -28,4 +28,15 @@ export class UpdatePhotoDto {
   @IsOptional()
   @IsBoolean()
   is_featured?: boolean;
+
+  @ApiProperty({
+    description: '标签数组',
+    example: ['日本', '东京'],
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }
