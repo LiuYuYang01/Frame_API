@@ -336,7 +336,7 @@ export class FileController {
     }
 
     // 上传分片
-    const result = await this.qiniuService.uploadChunk(chunkBuffer, uploadIdValue, chunkIndexValue, totalChunksValue, key || '', fileSizeValue);
+    const result = await this.qiniuService.uploadChunk(chunkBuffer, uploadIdValue, chunkIndexValue, totalChunksValue, key || '', fileName, fileSizeValue);
 
     // 如果上传完成，创建照片记录
     if (result.completed && result.key && result.hash) {

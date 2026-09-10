@@ -1,26 +1,8 @@
-import { BeforeInsert, BeforeUpdate, Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
-
-const PHOTO_NAME_PATTERN = /^[0-9a-z]{10}$/;
-
-const normalizePhotoName = (name: string): string => {
-  if (PHOTO_NAME_PATTERN.test(name)) return name;
-  const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
-  let result = '';
-  for (let i = 0; i < 10; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-};
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
 import { Album } from './album';
 
 @Entity('photo')
 export class Photo {
-  @BeforeInsert()
-  @BeforeUpdate()
-  normalizeName() {
-    this.name = normalizePhotoName(this.name);
-  }
-
   @PrimaryGeneratedColumn()
   id: number;
 

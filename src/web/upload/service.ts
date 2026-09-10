@@ -399,6 +399,7 @@ export class QiniuService {
     chunkIndex: number,
     totalChunks: number,
     key: string,
+    fileName: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _fileSize: number,
   ): Promise<{ uploaded: number[]; completed: boolean; key?: string; hash?: string }> {
@@ -410,7 +411,7 @@ export class QiniuService {
 
     let finalKey = key;
     if (!finalKey || finalKey.trim() === '') {
-      finalKey = this.buildObjectKey(`upload${path.extname(key || '.jpg')}`);
+      finalKey = this.buildObjectKey(fileName || key || '.jpg');
     } else if (!/^[0-9a-z]{10}\.[a-z0-9]+$/.test(finalKey)) {
       finalKey = this.buildObjectKey(finalKey);
     }

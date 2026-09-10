@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import * as crypto from 'crypto';
 import { Photo } from '@/entity/photo';
 import { CreatePhotoDto } from './dto/create_photo';
 import { UpdatePhotoDto } from './dto/update_photo';
@@ -177,9 +178,23 @@ export class PhotoService {
    * 根据 hash 查询照片（用于秒传）
    */
   async findByHash(hash: string) {
-    return this.photoRepository.findOne({
-      where: { hash },
-    });
+    const photo = await this.photoRepository.findOne({ where: { hash } });
+    if (!photo) return photo;
+    const name = this.normalizePhotoName(photo);
+    if (photo.name !== name) {
+      photo.name = name;
+      await this.photoRepository.save(photo);
+    }
+    return photo;
+  }
+
+  private normalizePhotoName(photo: Photo): string {
+    if (/^[0-9a-z]{10}$/.test(photo.name)) return photo.name;
+    return crypto
+      .createHash('sha256')
+      .update(photo.hash || photo.url || photo.name)
+      .digest('hex')
+      .slice(0, 10);
   }
 
   /**
